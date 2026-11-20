@@ -33,7 +33,11 @@ q("#reset").onclick=()=>{state.city="all";state.location="";state.type="Apartmen
 q("#closeModal").onclick=()=>q("#modal").hidden=true;q("#modal").onclick=e=>{if(e.target.id==="modal")q("#modal").hidden=true};
 let authUser=null;
 function authEscape(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
-function updateAuthButton(){q("#loginBtn").textContent=authUser?"Account":"Sign in";}
+function updateAuthButton(){
+  const signedIn=Boolean(authUser);
+  q("#loginBtn").textContent=signedIn?"Account":"Sign in";
+  if(window.parent!==window)window.parent.postMessage({type:"flat-finder:auth-state",signedIn},location.origin);
+}
 function showAuthForm(mode="signin",message="",isError=false){
   if(!authConfigured){
     q("#modalBody").innerHTML="<div class=\"auth-panel\"><span class=\"eyebrow\">ACCOUNT ACCESS</span><h2>Sign in setup is not finished</h2><p class=\"muted\">The site needs its Supabase publishable key as a Cloudflare Pages build variable named <b>VITE_SUPABASE_PUBLISHABLE_KEY</b>. This is a public client key, not a secret service-role key. You do not need to buy a domain or set up Resend for this step.</p></div>";
@@ -86,6 +90,10 @@ if(authClient){
   authClient.auth.onAuthStateChange((_event,session)=>{authUser=session?.user||null;updateAuthButton();});
 }
 q("#loginBtn").onclick=()=>authUser?showAuthAccount():showAuthForm("signin");
+window.addEventListener("message",event=>{
+  if(event.origin!==location.origin||event.source!==window.parent)return;
+  if(event.data?.type==="flat-finder:open-auth")authUser?showAuthAccount():showAuthForm("signin");
+});
 q("#listBtn").onclick=()=>{q("#modalBody").innerHTML="<h2>List your property</h2><p class=\"muted\">Owner and agent submissions should remain private until moderation and verification checks pass.</p><div class=\"notice\">Production flow: account → ownership evidence → draft → admin review → approved listing → protected contact.</div><button class=\"primary wide\" id=\"modalClose3\">Got it</button>";q("#modal").hidden=false;q("#modalClose3").onclick=()=>q("#modal").hidden=true};
 q("#gridBtn").onclick=()=>{q("#cards").classList.remove("list");q("#gridBtn").classList.add("on");q("#mapBtn").classList.remove("on")};q("#mapBtn").onclick=()=>{q("#cards").classList.add("list");q("#mapBtn").classList.add("on");q("#gridBtn").classList.remove("on");q("#map").scrollIntoView({behavior:"smooth"})};
 q("#savedCount").textContent=state.saved.size;renderChips();initMap();
