@@ -51,6 +51,12 @@ import { authClient, authConfigured } from "./auth.js";
   };
   const validIndianMobile = (value) => /^[6-9]\d{9}$/.test(indianMobileDigits(value));
   const dateLabel = (value) => value ? new Intl.DateTimeFormat("en-IN", { dateStyle: "long" }).format(new Date(value)) : "Not available";
+  const tabTitle = (tab) => ({
+    overview: "Your account",
+    details: "Personal details",
+    settings: "Settings & preferences",
+    security: "Security"
+  }[tab] || "Your account");
 
   function activate(name, { updateHash = true } = {}) {
     if (!views[name]) name = "homes";
@@ -337,9 +343,11 @@ import { authClient, authConfigured } from "./auth.js";
     const password = String(values.get("newPassword") || "");
     const confirmation = String(values.get("confirmPassword") || "");
     if (password.length < 8) return renderAccountContent("Choose a password with at least 8 characters.");
+    const confirmInput = form.querySelector('[name="confirmPassword"]');
+    confirmInput.setCustomValidity("");
     if (password !== confirmation) {
-      form.querySelector('[name="confirmPassword"]').setCustomValidity("Passwords do not match.");
-      form.querySelector('[name="confirmPassword"]').reportValidity();
+      confirmInput.setCustomValidity("Passwords do not match.");
+      confirmInput.reportValidity();
       return;
     }
     button.disabled = true;
@@ -498,8 +506,7 @@ import { authClient, authConfigured } from "./auth.js";
   window.addEventListener("message", (event) => {
     if (event.origin !== location.origin || event.source !== frames.homes?.contentWindow) return;
     if (event.data?.type === "flat-finder:auth-state") {
-      if (!event.data.signedIn && signedIn) setLocked(true);
-      else if (event.data.signedIn && !signedIn) authClient?.auth.getSession()
+      authClient?.auth.getSession()
         .then(({ data }) => setLocked(!data.session?.user, data.session?.user || null));
     }
   });
