@@ -1,8 +1,8 @@
 const PROJECT_URL = (import.meta.env.VITE_SUPABASE_URL || "https://smfcnhclacqombiolhjt.supabase.co").replace(/\/+$/, "");
-const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+// Supabase Publishable keys are designed for browser exposure; never use a secret/service_role key here.
+const PUBLISHABLE_KEY = "sb_publishable_I0bLcPBehyCGxlq04b_eNQ_EbX8qzBb";
 const sdk = typeof window !== "undefined" ? window.supabase : null;
 
-// Only the public publishable key belongs in browser code. Never use a service_role key here.
 export const authConfigured = Boolean(PROJECT_URL && PUBLISHABLE_KEY && typeof sdk?.createClient === "function");
 
 export const authClient = authConfigured
