@@ -18,6 +18,7 @@
   }
   const authButton=document.getElementById("shell-auth-button");
   authButton?.addEventListener("click",()=>{
+    activate("homes");
     frames.homes?.contentWindow?.postMessage({type:"flat-finder:open-auth"},location.origin);
   });
   window.addEventListener("message",event=>{
