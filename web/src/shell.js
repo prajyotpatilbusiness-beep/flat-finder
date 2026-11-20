@@ -52,6 +52,7 @@ import { authClient, authConfigured } from "./auth.js";
   }
 
   function setLocked(locked) {
+    const wasSignedIn = signedIn;
     signedIn = !locked;
     shellMain.classList.toggle("is-locked", locked);
     authGate.hidden = !locked;
@@ -60,7 +61,7 @@ import { authClient, authConfigured } from "./auth.js";
       view.setAttribute("aria-hidden", String(locked));
     }
     if (authButton) authButton.textContent = signedIn ? "Account" : "Sign in";
-    if (locked) setGateHome();
+    if (locked && wasSignedIn) setGateHome();
   }
 
   function setGateMode(mode) {
