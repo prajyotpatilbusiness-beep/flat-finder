@@ -23,3 +23,8 @@ begin
   return new;
 end;
 $function$;
+
+-- The profile row policies still restrict these column permissions to the signed-in user's own row.
+-- Do not grant access to the role column; it remains protected from client updates.
+grant select (phone) on table public.profiles to authenticated;
+grant update (phone) on table public.profiles to authenticated;
