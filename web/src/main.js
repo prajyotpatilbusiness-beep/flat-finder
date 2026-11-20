@@ -45,7 +45,7 @@ async function boot() {
   OVERVIEW.zoom = city.city.zoom || OVERVIEW.zoom;
   byId = new Map(city.societies.map((s) => [s.id, s]));
   $('city-pick').replaceChildren(...Object.entries(cities).map(([id, c]) => new Option(c.name, id, false, id === cityId)));
-  $('city-pick').onchange = () => { location.search = `?city=${$('city-pick').value}`; };
+  $('city-pick').onchange = () => { const next = new URLSearchParams(location.search); next.set('city', $('city-pick').value); location.search = next.toString(); };
 
   const freq = new Map();
   for (const s of city.societies) for (const a of s.amenities) freq.set(a, (freq.get(a) || 0) + 1);
