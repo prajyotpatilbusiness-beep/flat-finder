@@ -66,14 +66,14 @@ export function addSocietyLayers(map, shapes, points) {
     paint: { 'circle-color': stateColor(COLORS.match), 'circle-blur': 0.55,
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 2, 12, 4.5, 15, 13],
       'circle-opacity': ['match', ['feature-state', 'st'], 'match', 0.24, 'likely', 0.18, 'probable', 0.16, 'unknown', 0.07, 'no', 0, 0.12] } });
+  map.addLayer({ id: 'bld', type: 'fill-extrusion', source: 'shapes', minzoom: 11.5, filter: ['==', ['get', 'role'], 'bld'],
+    paint: { 'fill-extrusion-color': stateColor(COLORS.match), 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': 0.95,
+      'fill-extrusion-vertical-gradient': true } });
   map.addLayer({ id: 'society-dot', type: 'circle', source: 'pts', minzoom: 11.2,
     paint: { 'circle-color': stateColor(COLORS.match),
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 2.3, 14, 4.2, 17, 5.5],
       'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.15,
       'circle-opacity': ['match', ['feature-state', 'st'], 'match', 1, 'likely', 0.92, 'probable', 0.88, 'unknown', 0.48, 'no', 0, 0.7] } });
-  map.addLayer({ id: 'bld', type: 'fill-extrusion', source: 'shapes', minzoom: 11.5, filter: ['==', ['get', 'role'], 'bld'],
-    paint: { 'fill-extrusion-color': stateColor(COLORS.match), 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': 0.95,
-      'fill-extrusion-vertical-gradient': true } });
   map.addLayer({ id: 'labels', type: 'symbol', source: 'pts', minzoom: 13.2,
     filter: ['==', ['get', 'show'], 1],
     layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11.5, 'text-offset': [0, -2.2],
@@ -140,7 +140,10 @@ const LABEL_LAYERS = [
 ];
 
 export function addBaseLayers(map) {
-  for (const l of STREET_LAYERS) map.addLayer({ ...l, layout: { ...(l.layout || {}), visibility: 'none' } }, 'city');
+  for (const l of STREET_LAYERS) {
+    const before = l.id === 'st-bg' ? 'water-bg' : 'city';
+    map.addLayer({ ...l, layout: { ...(l.layout || {}), visibility: 'none' } }, before);
+  }
   for (const l of LABEL_LAYERS) map.addLayer(l); // above everything, including societies
 }
 
