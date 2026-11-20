@@ -188,14 +188,6 @@ create policy listing_reports_insert_own on public.listing_reports
     )
   );
 
-create policy subscriptions_read_own on public.subscriptions
-  for select to authenticated
-  using ((select auth.uid()) = user_id);
-create policy payment_events_deny_client_access on public.payment_events
-  for all to anon, authenticated using (false) with check (false);
-create policy moderation_history_deny_client_access on public.moderation_history
-  for all to anon, authenticated using (false) with check (false);
-
 revoke all on table public.profiles, public.listings, public.listing_photos,
   public.saved_listings, public.listing_reports, public.subscriptions,
   public.payment_events, public.moderation_history
@@ -214,8 +206,6 @@ grant select (id, listing_id, object_path, sort_order, created_at)
 grant select, insert, delete on public.saved_listings to authenticated;
 grant insert (reporter_id, listing_id, reason, details)
   on public.listing_reports to authenticated;
-grant select (id, plan_id, billing_interval, status, current_period_end, created_at)
-  on public.subscriptions to authenticated;
 
 grant all privileges on table public.profiles, public.listings, public.listing_photos,
   public.saved_listings, public.listing_reports, public.subscriptions,
@@ -247,4 +237,3 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function app_private.handle_new_user();
 
-revoke all on function public.rls_auto_enable() from public, anon, authenticated;
