@@ -321,3 +321,7 @@ body.has-card .maplibregl-ctrl-bottom-right { right: calc(var(--right-w) + var(-
   box-shadow: var(--shadow);
 }
 .topbar .toplink:hover { filter: brightness(1.07); text-decoration: none; }
+
+
+/* Embedded in the unified Flat Finder shell: use the shared header above it. */
+body.embedded .topbar{display:none!important}
