@@ -36,7 +36,7 @@ body{display:flex;flex-direction:column;min-height:100%;overflow:hidden;backgrou
 .auth-gate-card small{display:block;color:#858397;font-size:11px;line-height:1.5}
 .auth-gate-form{display:grid;gap:13px;margin-top:18px;text-align:left}
 .auth-gate-form h2{text-align:center;margin:0 0 5px}
-.auth-gate-form label{display:grid;gap:6px;color:#4b4a5c;font-size:12px;font-weight:700}
+.auth-gate-form label[hidden]{display:none}.auth-gate-form label{display:grid;gap:6px;color:#4b4a5c;font-size:12px;font-weight:700}
 .auth-gate-form input{width:100%;min-height:44px;padding:11px 12px;border:1px solid #dedce8;border-radius:10px;background:#fff;color:#17182a;font:14px "DM Sans",sans-serif;outline:none}
 .auth-gate-form input:focus{border-color:#7958ec;box-shadow:0 0 0 3px #7958ec20}
 .auth-gate-message{min-height:0;margin:0;color:#16865a;font-size:12px;line-height:1.5}
