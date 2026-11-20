@@ -22,7 +22,7 @@ export function createMap(container, { mobile }) {
     touchPitch: false,
     style: {
       version: 8,
-      projection: { type: 'mercator' },
+      projection: { type: 'globe' },
       glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
       sources: {
         omt: {
