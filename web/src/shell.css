@@ -13,6 +13,8 @@ body{display:flex;flex-direction:column;min-height:100%;overflow:hidden;backgrou
 .shell-tab:hover{color:var(--shell-purple);background:#f0ecff}
 .shell-tab.active{border-color:#e5ddff;background:#fff;color:var(--shell-purple);box-shadow:0 3px 10px rgba(69,43,143,.08)}
 .tab-icon{font-size:17px;line-height:1}
+.shell-auth-button{border:1px solid #d8ccff;border-radius:11px;background:#6338f2;color:#fff;padding:10px 16px;font:700 12px "DM Sans",sans-serif;cursor:pointer;white-space:nowrap;box-shadow:0 6px 16px #6338f222}
+.shell-auth-button:hover{background:#542bdd}
 .shell-main{position:relative;flex:1;min-height:0}
 .shell-view{position:absolute;inset:0;display:none;background:var(--shell-bg)}
 .shell-view.active{display:block}
@@ -24,6 +26,7 @@ body{display:flex;flex-direction:column;min-height:100%;overflow:hidden;backgrou
  .shell-brand-copy strong{font-size:16px}
  .shell-brand-copy small{font-size:9px}
  .shell-message{display:none}
+ .shell-auth-button{padding:9px 13px;font-size:11px}
  .shell-tabs{width:100%;gap:5px;padding:4px}
  .shell-tab{flex:1;justify-content:center;padding:9px 6px;font-size:11px}
  .shell-main{min-height:0}
