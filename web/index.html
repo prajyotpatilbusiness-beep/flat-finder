@@ -28,14 +28,49 @@
     </nav>
     <button class="shell-auth-button" id="shell-auth-button" type="button">Sign in</button>
   </header>
-  <main class="shell-main">
-    <section class="shell-view active" id="view-homes" role="tabpanel" aria-labelledby="tab-homes">
+  <main class="shell-main is-locked">
+    <section class="shell-view active" id="view-homes" inert aria-hidden="true" role="tabpanel" aria-labelledby="tab-homes">
       <iframe id="frame-homes" title="India-wide home search" src="/marketplace.html?embed=1" loading="eager"></iframe>
     </section>
-    <section class="shell-view" id="view-research" role="tabpanel" aria-labelledby="tab-research" hidden>
+    <section class="shell-view" id="view-research" inert aria-hidden="true" role="tabpanel" aria-labelledby="tab-research" hidden>
       <iframe id="frame-research" title="Interactive housing society research map" data-src="/research.html?embed=1" loading="lazy"></iframe>
     </section>
+    <div class="auth-gate" id="auth-gate" role="region" aria-label="Sign in required">
+      <div class="auth-gate-card">
+        <div class="auth-gate-mark" aria-hidden="true">⌂</div>
+        <p class="auth-gate-kicker">FLAT FINDER MEMBERS</p>
+        <div id="gate-intro">
+          <h1>Find your next home with confidence.</h1>
+          <p>Sign in or create a free account to unlock home search and society research.</p>
+          <div class="auth-gate-actions">
+            <button class="auth-gate-primary" id="gate-sign-in" type="button">Sign in</button>
+            <button class="auth-gate-secondary" id="gate-create-account" type="button">Create free account</button>
+          </div>
+          <small>Your search and research tools stay locked until you sign in.</small>
+        </div>
+        <form class="auth-gate-form" id="gate-auth-form" hidden>
+          <h2 id="gate-form-title">Welcome back</h2>
+          <label id="gate-name-field" hidden>Full name
+            <input id="gate-name" name="displayName" type="text" maxlength="80" placeholder="Your name" autocomplete="name">
+          </label>
+          <label>Email address
+            <input id="gate-email" name="email" type="email" maxlength="254" placeholder="you@example.com" autocomplete="email" required>
+          </label>
+          <label>Password
+            <input id="gate-password" name="password" type="password" minlength="8" placeholder="At least 8 characters" autocomplete="current-password" required>
+          </label>
+          <p class="auth-gate-message" id="gate-message" role="status" aria-live="polite"></p>
+          <button class="auth-gate-primary" id="gate-submit" type="submit">Sign in</button>
+          <div class="auth-gate-form-foot">
+            <button class="auth-gate-text-button" id="gate-back" type="button">Back</button>
+            <span><span id="gate-switch-label">New to Flat Finder?</span> <button class="auth-gate-text-button" id="gate-switch-mode" type="button">Create account</button></span>
+          </div>
+          <small>Email confirmation may be required when creating an account.</small>
+        </form>
+      </div>
+    </div>
   </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script type="module" src="/src/shell.js"></script>
 </body>
 </html>
