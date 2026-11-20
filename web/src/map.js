@@ -1,7 +1,7 @@
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-const COLORS = { match: '#ffd9a0', likely: '#c99a5c', probable: '#9a8463', unknown: '#55545c', no: '#1b1b1e' };
+const COLORS = { match: '#6357df', likely: '#e49a39', probable: '#4e8fc7', unknown: '#9aa8b8', no: '#d9e1eb' };
 export const OVERVIEW = { center: [77.065, 28.425], zoom: 12.4, pitch: 50, bearing: 0 };
 
 const stateColor = (fallback) => ['case',
@@ -11,35 +11,38 @@ const stateColor = (fallback) => ['case',
 export function createMap(container, { mobile }) {
   const map = new maplibregl.Map({
     container,
-    attributionControl: { compact: true },
-    center: mobile ? OVERVIEW.center : [78.5, 22.5],
-    zoom: mobile ? 11.6 : 2.2,
-    pitch: mobile ? 45 : 0,
+    attributionControl: { compact: false },
+    center: mobile ? OVERVIEW.center : [77.065, 28.425],
+    zoom: mobile ? 11.6 : 12.4,
+    pitch: mobile ? 38 : 0,
     bearing: 0,
-    maxPitch: 70,
-    dragRotate: false,      // north stays up, like Google Maps
+    maxPitch: 62,
+    dragRotate: false,
     pitchWithRotate: false,
     touchPitch: false,
     style: {
       version: 8,
-      projection: { type: 'globe' },
+      projection: { type: 'mercator' },
       glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
-      sky: { 'sky-color': '#07080b', 'horizon-color': '#1a1712', 'fog-color': '#07080b', 'sky-horizon-blend': 0.6,
-        'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.2, 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 10, 0] },
       sources: {
-        sat: { type: 'raster', tileSize: 256, maxzoom: 18, attribution: 'Imagery © Esri',
-          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'] },
-        omt: { type: 'vector', url: 'https://tiles.openfreemap.org/planet', attribution: '© OpenStreetMap contributors · OpenFreeMap' },
+        omt: {
+          type: 'vector',
+          url: 'https://tiles.openfreemap.org/planet',
+          attribution: '© OpenStreetMap contributors · Tiles © OpenFreeMap',
+        },
       },
       layers: [
-        { id: 'bg', type: 'background', paint: { 'background-color': '#050506' } },
-        { id: 'sat', type: 'raster', source: 'sat', paint: { 'raster-brightness-max': 0.3, 'raster-saturation': -0.75, 'raster-contrast': 0.15, 'raster-hue-rotate': 200 } },
-        { id: 'roads', type: 'line', source: 'omt', 'source-layer': 'transportation',
-          filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary']]],
-          paint: { 'line-color': '#ffcf8a', 'line-opacity': 0.2, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.5, 16, 2.5], 'line-blur': 1 } },
-        { id: 'city', type: 'fill-extrusion', source: 'omt', 'source-layer': 'building', minzoom: 13,
-          paint: { 'fill-extrusion-color': '#17171a', 'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 8],
-            'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0], 'fill-extrusion-opacity': 0.85 } },
+        { id: 'bg', type: 'background', paint: { 'background-color': '#f2f5fa' } },
+        { id: 'water-bg', type: 'fill', source: 'omt', 'source-layer': 'water',
+          paint: { 'fill-color': '#dcecf8', 'fill-opacity': 1 } },
+        { id: 'city', type: 'fill-extrusion', source: 'omt', 'source-layer': 'building', minzoom: 13.5,
+          paint: {
+            'fill-extrusion-color': '#c6d1df',
+            'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 7],
+            'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+            'fill-extrusion-opacity': 0.62,
+            'fill-extrusion-vertical-gradient': true,
+          } },
       ],
     },
   });
@@ -60,9 +63,14 @@ export function addSocietyLayers(map, shapes, points) {
       'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.6, 16, 2],
       'line-opacity': ['match', ['feature-state', 'st'], 'match', 0.9, 'likely', 0.7, 'probable', 0.7, 'unknown', 0.5, 'no', 0.05, 0.5] } });
   map.addLayer({ id: 'glow', type: 'circle', source: 'pts', maxzoom: 15.5,
-    paint: { 'circle-color': stateColor(COLORS.match), 'circle-blur': 1,
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 2, 12, 6, 15, 24],
-      'circle-opacity': ['match', ['feature-state', 'st'], 'match', 0.5, 'likely', 0.35, 'probable', 0.35, 'unknown', 0.14, 'no', 0, 0.25] } });
+    paint: { 'circle-color': stateColor(COLORS.match), 'circle-blur': 0.55,
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 2, 12, 4.5, 15, 13],
+      'circle-opacity': ['match', ['feature-state', 'st'], 'match', 0.24, 'likely', 0.18, 'probable', 0.16, 'unknown', 0.07, 'no', 0, 0.12] } });
+  map.addLayer({ id: 'society-dot', type: 'circle', source: 'pts', minzoom: 11.2,
+    paint: { 'circle-color': stateColor(COLORS.match),
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 2.3, 14, 4.2, 17, 5.5],
+      'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.15,
+      'circle-opacity': ['match', ['feature-state', 'st'], 'match', 1, 'likely', 0.92, 'probable', 0.88, 'unknown', 0.48, 'no', 0, 0.7] } });
   map.addLayer({ id: 'bld', type: 'fill-extrusion', source: 'shapes', minzoom: 11.5, filter: ['==', ['get', 'role'], 'bld'],
     paint: { 'fill-extrusion-color': stateColor(COLORS.match), 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': 0.95,
       'fill-extrusion-vertical-gradient': true } });
@@ -70,7 +78,7 @@ export function addSocietyLayers(map, shapes, points) {
     filter: ['==', ['get', 'show'], 1],
     layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11.5, 'text-offset': [0, -2.2],
       'text-letter-spacing': 0.04, 'text-optional': true },
-    paint: { 'text-color': '#f2f0ec', 'text-halo-color': 'rgba(0,0,0,.85)', 'text-halo-width': 1.4,
+    paint: { 'text-color': '#27364b', 'text-halo-color': 'rgba(255,255,255,.96)', 'text-halo-width': 1.8,
       'text-opacity': ['match', ['feature-state', 'st'], 'match', 1, 'likely', 0.85, 'probable', 0.85, 'unknown', 0.35, 'no', 0, 0.7] } });
 }
 
@@ -78,9 +86,9 @@ export function addSocietyLayers(map, shapes, points) {
 export function startPulse(map) {
   setInterval(() => {
     if (!map.getLayer('glow')) return;
-    const k = 1 + 0.35 * Math.sin(performance.now() / 420);
-    map.setPaintProperty('glow', 'circle-radius', ['interpolate', ['linear'], ['zoom'], 9, 2 * k, 12, 6 * k, 15, 24 * k]);
-  }, 80);
+    const k = 1 + 0.10 * Math.sin(performance.now() / 780);
+    map.setPaintProperty('glow', 'circle-radius', ['interpolate', ['linear'], ['zoom'], 9, 2 * k, 12, 4.5 * k, 15, 13 * k]);
+  }, 260);
 }
 
 export function setStates(map, entries) {
@@ -138,25 +146,25 @@ export function addBaseLayers(map) {
 
 // Building colours per base map. Light needs darker "match" colours and pale "no" colours.
 const PALETTES = {
-  night: { match: '#ffd9a0', likely: '#c99a5c', probable: '#9a8463', unknown: '#55545c', no: '#1b1b1e', sel: '#ffffff', city: '#17171a', label: '#f2f0ec', halo: 'rgba(0,0,0,.85)' },
-  streets: { match: '#ffd9a0', likely: '#c99a5c', probable: '#9a8463', unknown: '#5d5c64', no: '#2c2d31', sel: '#ffffff', city: '#2a2b30', label: '#f2f0ec', halo: 'rgba(0,0,0,.85)' },
-  light: { match: '#e8710a', likely: '#f2a93b', probable: '#f6c896', unknown: '#a9a6a0', no: '#e4e1db', sel: '#1a73e8', city: '#e8e5df', label: '#202124', halo: 'rgba(255,255,255,.95)' },
+  night: { match: '#f5c56f', likely: '#e09c48', probable: '#7fadd7', unknown: '#718198', no: '#28384e', sel: '#ffffff', city: '#2d4058', label: '#f3f7fc', halo: 'rgba(17,26,41,.95)' },
+  streets: { match: '#6357df', likely: '#e49a39', probable: '#4e8fc7', unknown: '#9aa8b8', no: '#d9e1eb', sel: '#ffffff', city: '#c6d1df', label: '#27364b', halo: 'rgba(255,255,255,.96)' },
+  light: { match: '#6357df', likely: '#e49a39', probable: '#4e8fc7', unknown: '#9aa8b8', no: '#d9e1eb', sel: '#ffffff', city: '#c6d1df', label: '#27364b', halo: 'rgba(255,255,255,.96)' },
 };
-const LIGHT = { // Google-like day map
-  'st-bg': { 'background-color': '#f5f3ef' }, 'st-green': { 'fill-color': '#d8ead2' }, 'st-park': { 'fill-color': '#c8e6c4' },
-  'st-water': { 'fill-color': '#aadaff' }, 'st-casing': { 'line-color': '#d6d3cd' },
-  'st-road': { 'line-color': ['match', ['get', 'class'], ['motorway', 'trunk'], '#fbd277', ['primary', 'secondary'], '#ffffff', '#ffffff'] },
-  'st-rail': { 'line-color': '#b0aeb8' },
-  'lbl-road': { 'text-color': '#4d5156', 'text-halo-color': '#ffffff' }, 'lbl-place': { 'text-color': '#5f6368', 'text-halo-color': '#ffffff' },
-  'lbl-metro': { 'text-color': '#1a73e8', 'text-halo-color': '#ffffff' },
+const LIGHT = {
+  'st-bg': { 'background-color': '#f2f5fa' }, 'st-green': { 'fill-color': '#e3f0e6' }, 'st-park': { 'fill-color': '#d9ecd9' },
+  'st-water': { 'fill-color': '#dcecf8' }, 'st-casing': { 'line-color': '#c9d4e2' },
+  'st-road': { 'line-color': ['match', ['get', 'class'], ['motorway', 'trunk'], '#edbd72', ['primary', 'secondary'], '#ffffff', ['tertiary'], '#f9fbfd', '#f3f6fa'] },
+  'st-rail': { 'line-color': '#b8c3d2' },
+  'lbl-road': { 'text-color': '#68778d', 'text-halo-color': '#ffffff' }, 'lbl-place': { 'text-color': '#34445d', 'text-halo-color': '#ffffff' },
+  'lbl-metro': { 'text-color': '#6357df', 'text-halo-color': '#ffffff' },
 };
 const DARK = {
-  'st-bg': { 'background-color': '#202124' }, 'st-green': { 'fill-color': '#1f2a22' }, 'st-park': { 'fill-color': '#22311f' },
-  'st-water': { 'fill-color': '#15233a' }, 'st-casing': { 'line-color': '#0f0f11' },
-  'st-road': { 'line-color': ['match', ['get', 'class'], ['motorway', 'trunk'], '#a08a66', ['primary', 'secondary'], '#646a75', ['tertiary'], '#4d5159', '#3d4047'] },
-  'st-rail': { 'line-color': '#5b5b66' },
-  'lbl-road': { 'text-color': '#e4dfd5', 'text-halo-color': 'rgba(0,0,0,.9)' }, 'lbl-place': { 'text-color': '#9d988e', 'text-halo-color': 'rgba(0,0,0,.85)' },
-  'lbl-metro': { 'text-color': '#8fb4ff', 'text-halo-color': 'rgba(0,0,0,.85)' },
+  'st-bg': { 'background-color': '#111a29' }, 'st-green': { 'fill-color': '#1d342f' }, 'st-park': { 'fill-color': '#24453a' },
+  'st-water': { 'fill-color': '#1a3552' }, 'st-casing': { 'line-color': '#0c1421' },
+  'st-road': { 'line-color': ['match', ['get', 'class'], ['motorway', 'trunk'], '#9b805b', ['primary', 'secondary'], '#53647a', ['tertiary'], '#394b62', '#2e4055'] },
+  'st-rail': { 'line-color': '#55677f' },
+  'lbl-road': { 'text-color': '#d3dfed', 'text-halo-color': 'rgba(17,26,41,.96)' }, 'lbl-place': { 'text-color': '#b4c3d5', 'text-halo-color': 'rgba(17,26,41,.95)' },
+  'lbl-metro': { 'text-color': '#a9a0ff', 'text-halo-color': 'rgba(17,26,41,.95)' },
 };
 
 const colorBy = (c) => ['case', ['boolean', ['feature-state', 'sel'], false], c.sel,
@@ -165,22 +173,29 @@ const colorBy = (c) => ['case', ['boolean', ['feature-state', 'sel'], false], c.
 export const BASE_MODES = ['night', 'streets', 'light'];
 
 export function setBaseMode(map, mode) {
-  const streetsLike = mode !== 'night';
-  for (const l of STREET_LAYERS) map.setLayoutProperty(l.id, 'visibility', streetsLike ? 'visible' : 'none');
-  map.setLayoutProperty('sat', 'visibility', streetsLike ? 'none' : 'visible');
-  map.setLayoutProperty('roads', 'visibility', streetsLike ? 'none' : 'visible');
-  map.setLayoutProperty('lbl-metro', 'visibility', streetsLike ? 'visible' : 'none');
-  for (const [id, props] of Object.entries(mode === 'light' ? LIGHT : DARK)) for (const [k, v] of Object.entries(props)) map.setPaintProperty(id, k, v);
+  const palette = mode === 'night' ? DARK : LIGHT;
+  for (const l of STREET_LAYERS) map.setLayoutProperty(l.id, 'visibility', 'visible');
+  for (const [id, props] of Object.entries(palette)) {
+    for (const [key, value] of Object.entries(props)) map.setPaintProperty(id, key, value);
+  }
   const c = PALETTES[mode];
+  map.setPaintProperty('bg', 'background-color', mode === 'night' ? '#111a29' : '#f2f5fa');
+  map.setPaintProperty('water-bg', 'fill-color', mode === 'night' ? '#1a3552' : '#dcecf8');
   map.setPaintProperty('city', 'fill-extrusion-color', c.city);
-  for (const [id, prop] of [['bld', 'fill-extrusion-color'], ['site-fill', 'fill-color'], ['site-line', 'line-color'], ['glow', 'circle-color']]) map.setPaintProperty(id, prop, colorBy(c));
+  for (const [id, prop] of [['bld', 'fill-extrusion-color'], ['site-fill', 'fill-color'], ['site-line', 'line-color'], ['glow', 'circle-color'], ['society-dot', 'circle-color']]) {
+    if (map.getLayer(id)) map.setPaintProperty(id, prop, colorBy(c));
+  }
   map.setPaintProperty('labels', 'text-color', c.label);
   map.setPaintProperty('labels', 'text-halo-color', c.halo);
-  map.setPaintProperty('glow', 'circle-opacity', ['match', ['feature-state', 'st'], 'match', mode === 'light' ? 0.28 : 0.5, 'likely', mode === 'light' ? 0.2 : 0.35, 'probable', mode === 'light' ? 0.2 : 0.35, 'unknown', mode === 'light' ? 0.06 : 0.14, 'no', 0, 0.2]);
-  map.setPaintProperty('site-fill', 'fill-opacity', ['match', ['feature-state', 'st'], 'match', mode === 'light' ? 0.22 : 0.13, 'likely', 0.12, 'probable', 0.12, 'unknown', 0.06, 'no', 0, 0.08]);
-  map.setSky(mode === 'light'
-    ? { 'sky-color': '#cfe3f5', 'horizon-color': '#eef3f7', 'fog-color': '#f5f3ef', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.2, 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 10, 0] }
-    : { 'sky-color': '#07080b', 'horizon-color': '#1a1712', 'fog-color': '#07080b', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.2, 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 10, 0] });
+  map.setPaintProperty('glow', 'circle-opacity', ['match', ['feature-state', 'st'],
+    'match', mode === 'night' ? 0.28 : 0.2, 'likely', 0.14, 'probable', 0.13, 'unknown', 0.05, 'no', 0, 0.1]);
+  map.setPaintProperty('site-fill', 'fill-opacity', ['match', ['feature-state', 'st'],
+    'match', mode === 'night' ? 0.2 : 0.16, 'likely', 0.12, 'probable', 0.11, 'unknown', 0.05, 'no', 0, 0.07]);
+  map.setSky(mode === 'night'
+    ? { 'sky-color': '#111a29', 'horizon-color': '#26354a', 'fog-color': '#111a29', 'sky-horizon-blend': 0.6,
+        'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.2, 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 10, 0] }
+    : { 'sky-color': '#dce8f4', 'horizon-color': '#f3f6fa', 'fog-color': '#f2f5fa', 'sky-horizon-blend': 0.6,
+        'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.2, 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 10, 0] });
 }
 
 // Let people switch off the glow, the society boundaries or the name labels when they get too busy.
