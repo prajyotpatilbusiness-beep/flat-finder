@@ -146,7 +146,7 @@ import { authClient, authConfigured } from "./auth.js";
     if (!authClient || !currentUser) return null;
     const { data, error } = await authClient
       .from("profiles")
-      .select("id,display_name,phone,role,created_at,updated_at")
+      .select("id,display_name,phone,created_at")
       .eq("id", currentUser.id)
       .maybeSingle();
     if (error) throw error;
@@ -177,9 +177,7 @@ import { authClient, authConfigured } from "./auth.js";
     const email = currentUser.email || "";
     const phone = getPhone();
     const phoneDigits = indianMobileDigits(phone);
-    const role = currentProfile?.role === "owner" ? "Property owner"
-      : currentProfile?.role === "agent" ? "Real estate agent"
-      : "Home seeker";
+    const role = "Flat Finder member";
     const created = dateLabel(currentProfile?.created_at || currentUser.created_at);
     const emailStatus = currentUser.email_confirmed_at ? "Email confirmed" : "Email not confirmed";
     const noticeHtml = notice ? '<p class="account-notice" role="status">' + escapeHtml(notice) + '</p>' : "";
@@ -240,7 +238,7 @@ import { authClient, authConfigured } from "./auth.js";
         <div class="account-section-intro"><h2>Settings & preferences</h2><p>Choose how Flat Finder should contact you.</p></div>
         ${noticeHtml}
         <form class="account-form" id="account-settings-form">
-          <label class="account-toggle-row"><span><b>Saved-home updates</b><small>Receive updates when saved-home alerts become available.</small></span><input type="checkbox" name="savedHomeAlerts" ${prefs.savedHomeAlerts !== false ? "checked" : ""}></label>
+          <label class="account-toggle-row"><span><b>Saved-home updates</b><small>Receive updates when saved-home alerts become available.</small></span><input type="checkbox" name="savedHomeAlerts" ${prefs.savedHomeAlerts === true ? "checked" : ""}></label>
           <label class="account-toggle-row"><span><b>Product and service news</b><small>Receive occasional Flat Finder product announcements.</small></span><input type="checkbox" name="productNews" ${prefs.productNews === true ? "checked" : ""}></label>
           <label>Preferred city
             <input name="preferredCity" type="text" maxlength="80" value="${escapeHtml(prefs.preferredCity || "")}" placeholder="e.g. Pune">
