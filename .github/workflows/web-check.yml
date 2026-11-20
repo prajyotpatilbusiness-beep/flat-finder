@@ -20,4 +20,9 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run build
+      - name: Verify all app pages are published
+        run: |
+          test -f dist/index.html
+          test -f dist/marketplace.html
+          test -f dist/research.html
       - run: npm test
