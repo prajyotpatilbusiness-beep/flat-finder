@@ -284,7 +284,7 @@ import { authClient, authConfigured } from "./auth.js";
       const { data, error } = await authClient.from("profiles")
         .update({ display_name: displayName, phone: "+91" + mobile })
         .eq("id", currentUser.id)
-        .select("id,display_name,phone,role,created_at,updated_at")
+        .select("id,display_name,phone,created_at")
         .single();
       if (error) throw error;
       currentProfile = data;
