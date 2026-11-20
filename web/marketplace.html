@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f7f5ff"><title>Flat Finder — India-wide Home Search</title>
+<meta name="description" content="Search rental and sale homes across India by city, locality, budget, BHK and amenities.">
+<link rel="canonical" href="https://flat-finder-57f.pages.dev/marketplace.html">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+</head><body><div class="app">
+<header class="topbar"><a class="brand" href="/" aria-label="Flat Finder home"><span class="logo">⌂</span><span><b>Flat Finder</b><small>Find home. Live better.</small></span></a>
+<nav><a class="active" href="#explore">Explore</a><a href="#saved">Saved <i id="savedCount">0</i></a><a href="#plans">Plans</a><a href="/">Society Research</a></nav>
+<div class="actions"><button class="ghost" id="loginBtn">Sign in</button><button class="primary" id="listBtn">+ List property</button></div><button class="menu" id="menuBtn">☰</button></header>
+<main id="explore"><section class="hero"><div><span class="eyebrow">HOMES ACROSS INDIA</span><h1>Find a place that <em>feels like home.</em></h1><p>Compare rentals and homes for sale by location, budget, BHK and the details that matter.</p></div><div class="trust"><b>India-wide discovery</b><span>Approximate map pins • Demo inventory clearly labelled</span></div></section>
+<section class="searchbox"><div class="field location"><label>LOCATION</label><input id="location" placeholder="City, locality or PIN code" autocomplete="off"><div id="suggestions" class="suggestions"></div></div>
+<div class="field"><label>LOOKING TO</label><div class="seg"><button class="on" data-purpose="rent">Rent</button><button data-purpose="sale">Buy</button></div></div>
+<div class="field"><label>CITY</label><select id="city"><option value="all">All India</option><option>Pune</option><option>Mumbai</option><option>Bengaluru</option><option>Delhi NCR</option><option>Hyderabad</option><option>Chennai</option><option>Gurugram</option><option>Noida</option><option>Kolkata</option></select></div>
+<button class="primary searchbtn" id="searchBtn">⌕ Search homes</button></section>
+<div class="demo"><b>Demo inventory:</b> the sample homes below are fictional examples, not live offers or verified listings.</div>
+<section class="content"><aside class="filters"><div class="filterhead"><div><span class="eyebrow">REFINE</span><h2>Filters</h2></div><button id="reset">Reset</button></div>
+<label>Property type</label><div class="chips" id="types"></div><label>BHK</label><div class="chips" id="bhks"></div>
+<label>Maximum <span id="budgetLabel">monthly rent</span><b id="budgetValue">₹50,000</b></label><input id="budget" type="range" min="5000" max="100000" step="2500" value="50000"><div class="range"><span>₹5k</span><span>₹1L+</span></div>
+<label>Furnishing</label><div class="checks" id="furnishing"><label><input type="checkbox" value="Furnished"> Furnished</label><label><input type="checkbox" value="Semi-furnished"> Semi-furnished</label><label><input type="checkbox" value="Unfurnished"> Unfurnished</label></div>
+<label>Amenities</label><div class="checks" id="amenities"><label><input type="checkbox" value="Parking"> Parking</label><label><input type="checkbox" value="Lift"> Lift</label><label><input type="checkbox" value="Security"> Security</label><label><input type="checkbox" value="Gym"> Gym</label><label><input type="checkbox" value="Power backup"> Power backup</label></div>
+<button class="primary wide" id="apply">Show properties</button></aside>
+<section class="results"><div class="resultbar"><div><span class="eyebrow">EXPLORE HOMES</span><h2><span id="count">0</span> homes to explore</h2><p id="context">Across India · Rent</p></div><div class="sort"><button id="gridBtn" class="view on">▦</button><button id="mapBtn" class="view">⌖</button><select id="sort"><option value="recommended">Recommended</option><option value="priceAsc">Price: low to high</option><option value="priceDesc">Price: high to low</option><option value="area">Largest area</option></select></div></div>
+<div class="workspace"><div id="cards" class="cards"></div><div id="map" class="map"></div></div></section></section></main>
+<footer><span>© Flat Finder</span><span>Built for India • <a href="/">Map & society research</a></span></footer></div>
+<div id="modal" class="modal" hidden><div class="modal-card"><button class="close" id="closeModal">×</button><div id="modalBody"></div></div></div>
+<script type="module" src="/src/marketplace.js"></script></body></html>
