@@ -10,6 +10,19 @@
 </head>
 <body>
   <div id="map"></div>
+  <div class="map-hud" aria-label="Society map legend">
+    <div class="map-hud-copy">
+      <span class="kicker">SOCIETY INTELLIGENCE</span>
+      <strong>Gurugram residential map</strong>
+      <small>Building footprints · housing societies · evidence-led matches</small>
+    </div>
+    <div class="map-legend" aria-label="Match status legend">
+      <span><i class="match"></i>Match</span>
+      <span><i class="likely"></i>Likely</span>
+      <span><i class="probable"></i>Estimated</span>
+      <span><i class="unknown"></i>Not checked</span>
+    </div>
+  </div>
 
   <div class="topbar">
     <button id="btn-guide" title="How this works">Guide</button>
@@ -26,6 +39,7 @@
   <aside class="panel left" id="filters">
     <div class="k">Flat Finder · <select id="city-pick" aria-label="City"></select></div>
     <h1 class="ttl">Find the flat that fits.</h1>
+    <p class="panel-intro">Compare real society research against your budget, room sizes and everyday essentials.</p>
     <div class="search">
       <input id="q" type="search" placeholder="Search a society, developer or sector" autocomplete="off" aria-label="Search societies">
       <kbd>/</kbd>
@@ -106,7 +120,8 @@
   </aside>
 
   <aside class="panel right" id="log">
-    <div class="k row">Research log <span class="row-gap"><span class="val" id="log-mode">replay</span><button class="iconbtn" id="log-close" aria-label="Hide research log" title="Hide">×</button></span></div>
+    <div class="k row"><span>Evidence &amp; research</span> <span class="row-gap"><span class="val" id="log-mode">replay</span><button class="iconbtn" id="log-close" aria-label="Hide research log" title="Hide">×</button></span></div>
+    <p class="panel-intro">Source checks, floor-plan readings and findings appear here as the research plays.</p>
     <div class="feed" id="feed"></div>
   </aside>
 
