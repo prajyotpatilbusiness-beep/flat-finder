@@ -12,8 +12,8 @@
       tabs.find(t=>t.dataset.tab===key)?.setAttribute("aria-selected",String(active));
     }
     const frame=frames[name];
-    if(frame && !frame.src && frame.dataset.src) frame.src=frame.dataset.src;
-    if(frame){try{frame.contentWindow?.dispatchEvent(new Event("resize"));}catch{}}
+    if(frame && !frame.hasAttribute("src") && frame.dataset.src) frame.src=frame.dataset.src;
+    if(frame){try{const win=frame.contentWindow; if(win) win.dispatchEvent(new win.Event("resize"));}catch{}}
     if(updateHash) history.replaceState(null,"",location.pathname+location.search+(name==="homes"?"#homes":"#research"));
   }
   tabs.forEach(tab=>tab.addEventListener("click",()=>activate(tab.dataset.tab)));
