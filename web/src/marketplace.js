@@ -1,5 +1,6 @@
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { authClient, authConfigured } from "./auth.js";
 import "./marketplace.css";
 
 const listings=[
@@ -30,7 +31,61 @@ qa(".seg button").forEach(b=>b.onclick=()=>{qa(".seg button").forEach(x=>x.class
 q("#city").onchange=e=>{state.city=e.target.value;render()};q("#location").oninput=e=>{state.location=e.target.value.trim();render()};q("#budget").oninput=e=>{state.budget=Number(e.target.value);render()};q("#sort").onchange=e=>{state.sort=e.target.value;render()};q("#searchBtn").onclick=()=>{state.location=q("#location").value.trim();render()};q("#apply").onclick=render;
 q("#reset").onclick=()=>{state.city="all";state.location="";state.type="Apartment";state.bhk="all";state.budget=state.purpose==="rent"?50000:15000000;q("#city").value="all";q("#location").value="";qa(".checks input").forEach(x=>x.checked=false);renderChips();render()};
 q("#closeModal").onclick=()=>q("#modal").hidden=true;q("#modal").onclick=e=>{if(e.target.id==="modal")q("#modal").hidden=true};
-q("#loginBtn").onclick=()=>{q("#modalBody").innerHTML="<h2>Sign in</h2><p class=\"muted\">Authentication can be connected to the production API. Demo browsing does not require an account.</p><button class=\"primary wide\" id=\"modalClose2\">Continue</button>";q("#modal").hidden=false;q("#modalClose2").onclick=()=>q("#modal").hidden=true};
+let authUser=null;
+function authEscape(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
+function updateAuthButton(){q("#loginBtn").textContent=authUser?"Account":"Sign in";}
+function showAuthForm(mode="signin",message="",isError=false){
+  if(!authConfigured){
+    q("#modalBody").innerHTML="<div class=\"auth-panel\"><span class=\"eyebrow\">ACCOUNT ACCESS</span><h2>Sign in setup is not finished</h2><p class=\"muted\">The site needs its Supabase publishable key as a Cloudflare Pages build variable named <b>VITE_SUPABASE_PUBLISHABLE_KEY</b>. This is a public client key, not a secret service-role key. You do not need to buy a domain or set up Resend for this step.</p></div>";
+    q("#modal").hidden=false;return;
+  }
+  const creating=mode==="signup";
+  q("#modalBody").innerHTML="<div class=\"auth-panel\"><span class=\"eyebrow\">YOUR FLAT FINDER ACCOUNT</span><h2>"+(creating?"Create your account":"Welcome back")+"</h2><p class=\"muted\">"+(creating?"Create an account to prepare for saved searches and property-owner tools.":"Sign in to your Flat Finder account.")+"</p><div class=\"auth-tabs\"><button id=\"authSignInTab\" class=\""+(!creating?"active":"")+"\" type=\"button\">Sign in</button><button id=\"authSignUpTab\" class=\""+(creating?"active":"")+"\" type=\"button\">Create account</button></div><form id=\"authForm\" class=\"auth-form\"><label "+(creating?"":"hidden")+">Full name<input name=\"displayName\" autocomplete=\"name\" "+(creating?"required":"")+" maxlength=\"80\" placeholder=\"Your name\"></label><label>Email address<input name=\"email\" type=\"email\" autocomplete=\"email\" required maxlength=\"254\" placeholder=\"you@example.com\"></label><label>Password<input name=\"password\" type=\"password\" autocomplete=\""+(creating?"new-password":"current-password")+"\" minlength=\"8\" required placeholder=\"At least 8 characters\"></label><p id=\"authMessage\" class=\"auth-message"+(isError?" error":"")+"\" role=\"status\" aria-live=\"polite\">"+authEscape(message)+"</p><button class=\"primary wide\" type=\"submit\">"+(creating?"Create account":"Sign in")+"</button></form><p class=\"auth-footnote\">Email confirmation may be required. During free testing, Supabase's built-in email service is limited to authorised team addresses.</p></div>";
+  q("#modal").hidden=false;
+  q("#authSignInTab").onclick=()=>showAuthForm("signin");
+  q("#authSignUpTab").onclick=()=>showAuthForm("signup");
+  q("#authForm").onsubmit=async event=>{
+    event.preventDefault();
+    const form=event.currentTarget, submit=form.querySelector('[type="submit"]'), values=new FormData(form);
+    const email=String(values.get("email")||"").trim().toLowerCase(), password=String(values.get("password")||"");
+    const status=q("#authMessage");
+    submit.disabled=true;submit.textContent=creating?"Creating account…":"Signing in…";
+    status.textContent="";status.classList.remove("error");
+    try{
+      if(creating){
+        const displayName=String(values.get("displayName")||"").trim();
+        const {data,error}=await authClient.auth.signUp({email,password,options:{data:{display_name:displayName},emailRedirectTo:new URL("/marketplace.html",location.origin).href}});
+        if(error)throw error;
+        if(data.session){authUser=data.user;updateAuthButton();showAuthAccount();}
+        else showAuthForm("signin","Account created. Check your email for the confirmation link, then return here to sign in.");
+      }else{
+        const {data,error}=await authClient.auth.signInWithPassword({email,password});
+        if(error)throw error;
+        authUser=data.user;updateAuthButton();showAuthAccount();
+      }
+    }catch(error){
+      status.textContent=error?.message||"We could not complete that request. Please try again.";
+      status.classList.add("error");
+      submit.disabled=false;submit.textContent=creating?"Create account":"Sign in";
+    }
+  };
+}
+function showAuthAccount(){
+  if(!authUser){showAuthForm("signin");return;}
+  q("#modalBody").innerHTML="<div class=\"auth-panel\"><span class=\"eyebrow\">FLAT FINDER ACCOUNT</span><h2>You're signed in</h2><p class=\"muted\">"+authEscape(authUser.email)+"</p><p class=\"auth-message\" role=\"status\">Your account is connected. Property posting and owner verification are still being built.</p><button class=\"ghost wide\" id=\"signOutBtn\" type=\"button\">Sign out</button></div>";
+  q("#modal").hidden=false;
+  q("#signOutBtn").onclick=async()=>{
+    const button=q("#signOutBtn");button.disabled=true;button.textContent="Signing out…";
+    const {error}=await authClient.auth.signOut();
+    if(error){button.disabled=false;button.textContent="Sign out";q("#modalBody").insertAdjacentHTML("beforeend","<p class=\"auth-message error\">"+authEscape(error.message)+"</p>");return;}
+    authUser=null;updateAuthButton();showAuthForm("signin","You have been signed out.");
+  };
+}
+if(authClient){
+  authClient.auth.getSession().then(({data})=>{authUser=data.session?.user||null;updateAuthButton();}).catch(()=>{});
+  authClient.auth.onAuthStateChange((_event,session)=>{authUser=session?.user||null;updateAuthButton();});
+}
+q("#loginBtn").onclick=()=>authUser?showAuthAccount():showAuthForm("signin");
 q("#listBtn").onclick=()=>{q("#modalBody").innerHTML="<h2>List your property</h2><p class=\"muted\">Owner and agent submissions should remain private until moderation and verification checks pass.</p><div class=\"notice\">Production flow: account → ownership evidence → draft → admin review → approved listing → protected contact.</div><button class=\"primary wide\" id=\"modalClose3\">Got it</button>";q("#modal").hidden=false;q("#modalClose3").onclick=()=>q("#modal").hidden=true};
 q("#gridBtn").onclick=()=>{q("#cards").classList.remove("list");q("#gridBtn").classList.add("on");q("#mapBtn").classList.remove("on")};q("#mapBtn").onclick=()=>{q("#cards").classList.add("list");q("#mapBtn").classList.add("on");q("#gridBtn").classList.remove("on");q("#map").scrollIntoView({behavior:"smooth"})};
 q("#savedCount").textContent=state.saved.size;renderChips();initMap();
