@@ -58,7 +58,7 @@ function showAuthForm(mode="signin",message="",isError=false){
     try{
       if(creating){
         const displayName=String(values.get("displayName")||"").trim();
-        const {data,error}=await authClient.auth.signUp({email,password,options:{data:{display_name:displayName},emailRedirectTo:new URL("/marketplace.html",location.origin).href}});
+        const {data,error}=await authClient.auth.signUp({email,password,options:{data:{display_name:displayName},emailRedirectTo:new URL("/",location.origin).href}});
         if(error)throw error;
         if(data.session){authUser=data.user;updateAuthButton();showAuthAccount();}
         else showAuthForm("signin","Account created. Check your email for the confirmation link, then return here to sign in.");
@@ -92,7 +92,15 @@ if(authClient){
 q("#loginBtn").onclick=()=>authUser?showAuthAccount():showAuthForm("signin");
 window.addEventListener("message",event=>{
   if(event.origin!==location.origin||event.source!==window.parent)return;
-  if(event.data?.type==="flat-finder:open-auth")authUser?showAuthAccount():showAuthForm("signin");
+  if(event.data?.type==="flat-finder:open-auth"){
+  const mode=event.data.mode;
+  if(mode==="account"&&authClient){
+    authClient.auth.getSession().then(({data})=>{
+      authUser=data.session?.user||authUser;
+      if(authUser)showAuthAccount();else showAuthForm("signin");
+    });
+  }else showAuthForm(mode==="signup"?"signup":"signin");
+}
 });
 q("#listBtn").onclick=()=>{q("#modalBody").innerHTML="<h2>List your property</h2><p class=\"muted\">Owner and agent submissions should remain private until moderation and verification checks pass.</p><div class=\"notice\">Production flow: account → ownership evidence → draft → admin review → approved listing → protected contact.</div><button class=\"primary wide\" id=\"modalClose3\">Got it</button>";q("#modal").hidden=false;q("#modalClose3").onclick=()=>q("#modal").hidden=true};
 q("#gridBtn").onclick=()=>{q("#cards").classList.remove("list");q("#gridBtn").classList.add("on");q("#mapBtn").classList.remove("on")};q("#mapBtn").onclick=()=>{q("#cards").classList.add("list");q("#mapBtn").classList.add("on");q("#gridBtn").classList.remove("on");q("#map").scrollIntoView({behavior:"smooth"})};
