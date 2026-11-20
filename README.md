@@ -1,4 +1,10 @@
-# Flat Finder
+# Flat Finder — India marketplace + society research
+
+This fork adds a mobile-first India-wide rental/sale discovery experience to the original society research project. The marketplace homepage is `web/index.html`; the original research map is preserved at `/research.html`. Demo homes are explicitly labelled and are not live or verified inventory.
+
+## Marketplace
+
+Run `cd web && npm install && npm run dev` to preview the marketplace locally. Configure `VITE_MAP_STYLE_URL` for a production MapLibre-compatible style and keep required provider attribution visible. Production backend, authentication, PostgreSQL/PostGIS, object storage, Razorpay, moderation and verification should be configured before accepting real listings or payments.
 
 Every housing society in a city on one night map. Set the smallest bedroom you can live with, size, BHK, amenities and budget, and watch the societies that fit light up. Every number links to where it came from.
 
