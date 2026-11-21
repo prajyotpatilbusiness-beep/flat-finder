@@ -1,8 +1,13 @@
-"""Polite, cached, resumable Magicbricks crawler.
+"""Polite, cached project crawler with small, artifact-friendly collection batches.
 
-usage: python mb_crawl.py list <city>      # all list pages -> out/<city>/mb_index.json
-       python mb_crawl.py projects <city>  # every project page -> out/<city>/mb_projects.json
-<city> is a key in data/cities.json (default gurgaon).
+usage:
+  python mb_crawl.py list <city>
+  python mb_crawl.py projects <city>
+  python mb_crawl.py projects-range <city> <start> <end>
+  python mb_crawl.py merge <city>
+
+Range indexes are zero-based and end-exclusive. Range output files are safe to
+upload as separate GitHub Actions artifacts and merge after all batches finish.
 """
 import gzip
 import hashlib
@@ -26,6 +31,14 @@ UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
 DELAY = 1.0
 
 
+def write_json(path, value):
+    """Write complete JSON atomically so a checkpoint is never half-written."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix(path.suffix + ".tmp")
+    temp.write_text(json.dumps(value, indent=0), encoding="utf-8")
+    temp.replace(path)
+
+
 def fetch(url):
     CACHE.mkdir(parents=True, exist_ok=True)
     f = CACHE / (hashlib.sha1(url.encode()).hexdigest() + ".html.gz")
@@ -47,6 +60,8 @@ def fetch(url):
 def crawl_list():
     first = fetch(LIST_URL.format(1))
     total = mb_parse.parse_total(first)
+    if not total:
+        raise RuntimeError("Could not read the total project count from the first listing page.")
     pages = -(-total // 20)
     projects = {}
     for n in range(1, pages + 1):
@@ -56,13 +71,38 @@ def crawl_list():
         for c in mb_parse.parse_list_page(html):
             projects[c["psmid"]] = mb_parse.card_to_project(c)
         print(f"list {n}/{pages}: {len(projects)} projects", flush=True)
-    OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "mb_index.json").write_text(json.dumps(list(projects.values()), indent=0))
+    if len(projects) < total * 0.95:
+        raise RuntimeError(f"List crawl collected only {len(projects)} of {total} reported projects; refusing to checkpoint an incomplete index.")
+    write_json(OUT / "mb_index.json", list(projects.values()))
     print("total reported", total, "collected", len(projects))
 
 
-def crawl_projects():
-    index = json.loads((OUT / "mb_index.json").read_text())
+def merge_project_parts(index, parts):
+    """Merge range outputs in original index order and reject missing/duplicate IDs."""
+    by_id = {}
+    for part in parts:
+        for project in part:
+            project_id = project.get("mb_id")
+            if not project_id:
+                raise ValueError("A project batch contains a row without mb_id.")
+            if project_id in by_id:
+                raise ValueError(f"Duplicate project id across batches: {project_id}")
+            by_id[project_id] = project
+
+    expected = [project["mb_id"] for project in index]
+    missing = [project_id for project_id in expected if project_id not in by_id]
+    extra = [project_id for project_id in by_id if project_id not in set(expected)]
+    if missing or extra:
+        raise ValueError(f"Project batches do not match the index: {len(missing)} missing, {len(extra)} unexpected.")
+    return [by_id[project_id] for project_id in expected]
+
+
+def crawl_projects(start=0, end=None, output_path=None):
+    index = json.loads((OUT / "mb_index.json").read_text(encoding="utf-8"))
+    end = len(index) if end is None else end
+    if start < 0 or end < start or end > len(index):
+        raise ValueError(f"Invalid project range {start}:{end} for {len(index)} projects.")
+    selected = index[start:end]
     from concurrent.futures import ThreadPoolExecutor
 
     def one(p):
@@ -74,14 +114,43 @@ def crawl_projects():
             detail = {}
         return {**p, **{k: v for k, v in detail.items() if v not in (None, [], "")}}
 
+    target = pathlib.Path(output_path) if output_path else (
+        OUT / f"mb_projects_part_{start}_{end}.json" if (start or end != len(index)) else OUT / "mb_projects.json"
+    )
     out = []
     with ThreadPoolExecutor(max_workers=3) as ex:
-        for i, merged in enumerate(ex.map(one, index), 1):
+        for offset, merged in enumerate(ex.map(one, selected), 1):
             out.append(merged)
-            if i % 100 == 0 or i == len(index):
-                print(f"project {i}/{len(index)}", flush=True)
-                (OUT / "mb_projects.json").write_text(json.dumps(out, indent=0))
+            if offset % 100 == 0 or offset == len(selected):
+                print(f"project {start + offset}/{len(index)}", flush=True)
+                write_json(target, out)
+    if not selected:
+        write_json(target, out)
+    print(f"saved {len(out)} projects to {target}", flush=True)
+
+
+def merge_projects():
+    index = json.loads((OUT / "mb_index.json").read_text(encoding="utf-8"))
+    part_files = sorted(OUT.glob("mb_projects_part_*.json"))
+    if not part_files:
+        raise RuntimeError("No project batch files were found.")
+    parts = [json.loads(path.read_text(encoding="utf-8")) for path in part_files]
+    merged = merge_project_parts(index, parts)
+    write_json(OUT / "mb_projects.json", merged)
+    print(f"merged {len(merged)} projects from {len(part_files)} batches", flush=True)
 
 
 if __name__ == "__main__":
-    {"list": crawl_list, "projects": crawl_projects}[sys.argv[1]]()
+    command = sys.argv[1]
+    if command == "list":
+        crawl_list()
+    elif command == "projects":
+        crawl_projects()
+    elif command == "projects-range":
+        if len(sys.argv) != 5:
+            raise SystemExit("usage: python mb_crawl.py projects-range <city> <start> <end>")
+        crawl_projects(int(sys.argv[3]), int(sys.argv[4]))
+    elif command == "merge":
+        merge_projects()
+    else:
+        raise SystemExit(f"Unknown command: {command}")
