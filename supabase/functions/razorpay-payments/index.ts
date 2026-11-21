@@ -107,6 +107,32 @@ Deno.serve(async (req: Request) => {
       const plan = PLANS[planId];
       if (!plan) return json({ error: "INVALID_PLAN" }, 400);
 
+      const now = new Date().toISOString();
+      await admin.from("subscriptions")
+        .update({ status: "expired" })
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .lte("current_period_end", now);
+
+      const { data: activePlan, error: activePlanError } = await admin
+        .from("subscriptions")
+        .select("id,plan_id,billing_interval,current_period_start,current_period_end")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .gt("current_period_end", now)
+        .maybeSingle();
+      if (activePlanError) return json({ error: "ACTIVE_PLAN_CHECK_FAILED" }, 500);
+
+      const rank: Record<string, number> = { starter: 1, plus: 2, pro: 3 };
+      if (activePlan && rank[planId] <= rank[activePlan.plan_id]) {
+        return json({
+          error: "ACTIVE_PLAN_EXISTS",
+          activePlan: activePlan.plan_id,
+          expiresAt: activePlan.current_period_end,
+          message: "Your " + activePlan.plan_id.toUpperCase() + " plan is active. Choose a higher tier to upgrade.",
+        }, 409);
+      }
+
       const rupees = plan[interval];
       const order = await razorpayRequest("/orders", {
         method: "POST",
@@ -181,22 +207,17 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
       if (existing) return json({ success: true, subscription: existing, duplicate: true });
 
-      const { data: subscription, error: subscriptionError } = await admin
-        .from("subscriptions")
-        .insert({
-          user_id: user.id,
-          plan_id: planId,
-          billing_interval: interval,
-          provider: "razorpay",
-          provider_order_id: orderId,
-          provider_payment_id: paymentId,
-          status: "active",
-          current_period_end: addPeriod(interval),
-        })
-        .select("id,plan_id,status,billing_interval,current_period_end")
-        .single();
-      if (subscriptionError) {
-        console.error("Subscription insert failed", subscriptionError.code ?? "unknown");
+      const { data: activationData, error: subscriptionError } = await admin.rpc("activate_paid_subscription", {
+        p_user_id: user.id,
+        p_plan_id: planId,
+        p_billing_interval: interval,
+        p_provider_order_id: orderId,
+        p_provider_payment_id: paymentId,
+        p_current_period_end: addPeriod(interval),
+      });
+      const subscription = Array.isArray(activationData) ? activationData[0] : activationData;
+      if (subscriptionError || !subscription?.id) {
+        console.error("Subscription activation failed", subscriptionError?.code ?? "unknown");
         return json({ error: "SUBSCRIPTION_ACTIVATION_FAILED" }, 500);
       }
 
@@ -212,7 +233,7 @@ Deno.serve(async (req: Request) => {
       });
       if (eventError) console.error("Payment event audit insert failed", eventError.code ?? "unknown");
 
-      return json({ success: true, subscription, contacts: plan.contacts });
+      return json({ success: true, subscription, contacts: plan.contacts, monthlyUsageCarriesForward: true });
     }
 
     return json({ error: "UNKNOWN_ACTION" }, 400);
