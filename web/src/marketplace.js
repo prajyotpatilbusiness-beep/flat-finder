@@ -27,15 +27,14 @@ async function openDetail(id){
   const listing=listings.find(item=>item.id===id);
   if(!listing)return;
   if(!authUser){pendingDetailId=id;showAuthForm("signin","Sign in or create a free account to continue to full property details.");return;}
-  if(!authUser.phone_confirmed_at){pendingDetailId=id;beginPhoneVerification(authUser.phone||authUser.user_metadata?.phone||"");return;}
-  const {data:usageData,error:usageError}=await authClient.rpc("get_my_contact_usage");
-  if(usageError){showNotice("Membership status unavailable",usageError.message);return;}
-  const usage=Array.isArray(usageData)?usageData[0]:usageData;
-  if(!usage||!usage.contacts_limit){openPlans(id,"Choose a paid plan to unlock full details and verified owner contacts.");return;}
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id))){
     q("#modalBody").innerHTML="<div class='auth-panel'><span class='eyebrow'>SAMPLE PREVIEW</span><h2>This is a demo property</h2><p class='muted'>This sample is not a real home and has no real owner or phone number. Owner contacts will appear only on live, approved listings.</p><button class='primary wide' id='demoPlans'>View plans</button><button class='ghost wide' id='closeDetail'>Close</button></div>";
     q("#modal").hidden=false;q("#demoPlans").onclick=()=>{q("#modal").hidden=true;openPlans(id)};q("#closeDetail").onclick=()=>q("#modal").hidden=true;return;
   }
+  const {data:usageData,error:usageError}=await authClient.rpc("get_my_contact_usage");
+  if(usageError){showNotice("Membership status unavailable",usageError.message);return;}
+  const usage=Array.isArray(usageData)?usageData[0]:usageData;
+  if(!usage||!usage.contacts_limit){openPlans(id,"Choose a paid plan to unlock full details and verified owner contacts.");return;}
   const {data:details,error}=await authClient.rpc("reveal_owner_contact",{p_listing_id:id});
   if(error){
     const reason=error.message||"CONTACT_LOOKUP_FAILED";
