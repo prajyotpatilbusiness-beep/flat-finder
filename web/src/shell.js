@@ -110,12 +110,14 @@ import { authClient, authConfigured } from "./auth.js";
     signedIn = !locked;
     currentUser = locked ? null : (user || currentUser);
     if (locked) currentProfile = null;
-    // Explore stays public. Authentication is required only for protected details and owner contacts.
-    shellMain.classList.remove("is-locked");
-    authGate.hidden = true;
+
+    // Keep every app view inaccessible until Supabase confirms an authenticated session.
+    shellMain.classList.toggle("is-locked", locked);
+    document.querySelector(".shell-header")?.classList.toggle("is-locked", locked);
+    authGate.hidden = !locked;
     for (const view of Object.values(views)) {
-      view.inert = false;
-      view.setAttribute("aria-hidden", String(view.hidden));
+      view.inert = locked || view.hidden;
+      view.setAttribute("aria-hidden", String(locked || view.hidden));
     }
     syncAccountButton();
     if (locked) closeAccountPanel();
