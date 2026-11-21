@@ -4,11 +4,13 @@ import { authClient, authConfigured } from "./auth.js";
   const tabs = [...document.querySelectorAll("[data-tab]")];
   const views = {
     homes: document.getElementById("view-homes"),
-    research: document.getElementById("view-research")
+    research: document.getElementById("view-research"),
+    plans: document.getElementById("view-plans")
   };
   const frames = {
     homes: document.getElementById("frame-homes"),
-    research: document.getElementById("frame-research")
+    research: document.getElementById("frame-research"),
+    plans: document.getElementById("frame-plans")
   };
   const shellMain = document.querySelector(".shell-main");
   const authButton = document.getElementById("shell-auth-button");
@@ -103,21 +105,18 @@ import { authClient, authConfigured } from "./auth.js";
   }
 
   function setLocked(locked, user = null) {
-    const wasSignedIn = signedIn;
     signedIn = !locked;
     currentUser = locked ? null : (user || currentUser);
     if (locked) currentProfile = null;
-    shellMain.classList.toggle("is-locked", locked);
-    authGate.hidden = !locked;
+    // Explore stays public. Authentication is required only for protected details and owner contacts.
+    shellMain.classList.remove("is-locked");
+    authGate.hidden = true;
     for (const view of Object.values(views)) {
-      view.inert = locked;
-      view.setAttribute("aria-hidden", String(locked));
+      view.inert = false;
+      view.setAttribute("aria-hidden", String(view.hidden));
     }
     syncAccountButton();
-    if (locked && wasSignedIn) {
-      closeAccountPanel();
-      setGateHome();
-    }
+    if (locked) closeAccountPanel();
   }
 
   function setGateMode(mode) {
@@ -486,7 +485,7 @@ import { authClient, authConfigured } from "./auth.js";
 
   authButton?.addEventListener("click", () => {
     if (signedIn) openAccountPanel();
-    else setGateMode("signin");
+    else openMarketplaceAuth("signin");
   });
 
   document.querySelectorAll("[data-account-tab]").forEach((button) =>
@@ -502,10 +501,24 @@ import { authClient, authConfigured } from "./auth.js";
   });
 
   window.addEventListener("message", (event) => {
-    if (event.origin !== location.origin || event.source !== frames.homes?.contentWindow) return;
-    if (event.data?.type === "flat-finder:auth-state") {
-      authClient?.auth.getSession()
-        .then(({ data }) => setLocked(!data.session?.user, data.session?.user || null));
+    if (event.origin !== location.origin) return;
+    if (event.source === frames.homes?.contentWindow) {
+      if (event.data?.type === "flat-finder:auth-state") {
+        authClient?.auth.getSession()
+          .then(({ data }) => setLocked(!data.session?.user, data.session?.user || null));
+      }
+      if (event.data?.type === "flat-finder:show-plans") {
+        activate("plans");
+        const send = () => frames.plans?.contentWindow?.postMessage({
+          type: "flat-finder:pending-listing",
+          listingId: event.data.listingId || null
+        }, location.origin);
+        if (frames.plans?.contentDocument?.readyState === "complete") send();
+        else frames.plans?.addEventListener("load", send, { once: true });
+      }
+    }
+    if (event.source === frames.plans?.contentWindow && event.data?.type === "flat-finder:open-auth") {
+      openMarketplaceAuth(event.data.mode || "signin");
     }
   });
 
@@ -519,6 +532,6 @@ import { authClient, authConfigured } from "./auth.js";
   }
 
   tabs.forEach((tab) => tab.addEventListener("click", () => activate(tab.dataset.tab)));
-  const initial = location.hash === "#research" ? "research" : "homes";
+  const initial = location.hash === "#research" ? "research" : location.hash === "#plans" ? "plans" : "homes";
   activate(initial, { updateHash: false });
 })();
