@@ -12,6 +12,7 @@ export default defineConfig({
         main: resolve(root, "index.html"),
         marketplace: resolve(root, "marketplace.html"),
         research: resolve(root, "research.html"),
+        plans: resolve(root, "plans.html"),
       },
     },
   },
