@@ -11,6 +11,8 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const mobile = matchMedia('(max-width: 700px)').matches;
 const REPO = 'https://github.com/prajyotpatilbusiness-beep/flat-finder';
 const params = new URLSearchParams(location.search);
+if (window.top === window) window.location.replace("/");
+if (params.get("embed") === "1") document.body.classList.add("embedded");
 const store = { // localStorage can be missing or blocked: never let it break the page
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } },
