@@ -43,10 +43,23 @@ function card(l){
 }
 function render(){var rows=listings.filter(matches);if(state.sort==="priceAsc")rows.sort((a,b)=>a.price-b.price);if(state.sort==="priceDesc")rows.sort((a,b)=>b.price-a.price);if(state.sort==="area")rows.sort((a,b)=>b.area-a.area);q("#count").textContent=rows.length;q("#context").textContent=(state.city==="all"?"Across India":state.city)+" · "+(state.purpose==="rent"?"Rent":"Buy");q("#budgetLabel").textContent=state.purpose==="rent"?"monthly rent":"maximum sale price";q("#budgetValue").textContent=money(state.budget);q("#cards").innerHTML=rows.length?rows.map(card).join(""):"<div class=\"empty\"><div>⌂</div><h3>No homes match these filters.</h3><p>Try a wider budget, another city or fewer filters.</p><button class=\"primary\" id=\"emptyReset\">Reset filters</button></div>";qa("[data-save]").forEach(b=>b.onclick=()=>toggleSave(b.dataset.save));qa("[data-detail]").forEach(b=>b.onclick=()=>openDetail(b.dataset.detail));var er=q("#emptyReset");if(er)er.onclick=q("#reset").onclick;updateMap(rows)}
 function toggleSave(id){if(state.saved.has(id))state.saved.delete(id);else state.saved.add(id);localStorage.setItem("ff-saved",JSON.stringify([...state.saved]));q("#savedCount").textContent=state.saved.size;render()}
+async function getPhoneVerification(){
+  if(!authUser)return {verified:false,phone:""};
+  const {data,error}=await authClient.from("profiles")
+    .select("phone,phone_verified_at")
+    .eq("id",authUser.id)
+    .maybeSingle();
+  if(error)throw error;
+  return {verified:Boolean(data?.phone_verified_at),phone:data?.phone||authUser.user_metadata?.phone||""};
+}
 async function openDetail(id){
   const listing=listings.find(item=>item.id===id);
   if(!listing)return;
   if(!authUser){pendingDetailId=id;showAuthForm("signin","Sign in or create a free account to continue to full property details.");return;}
+  let phoneStatus;
+  try{phoneStatus=await getPhoneVerification();}
+  catch(error){showNotice("Mobile verification status unavailable",error?.message||"Please try again.");return;}
+  if(!phoneStatus.verified){pendingDetailId=id;await beginPhoneVerification(phoneStatus.phone);return;}
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id))){
     q("#modalBody").innerHTML="<div class='auth-panel'><span class='eyebrow'>SAMPLE PREVIEW</span><h2>This is a demo property</h2><p class='muted'>This sample is not a real home and has no real owner or phone number. Paid access will apply only to live, approved listings with a verified owner.</p><button class='ghost wide' id='closeDetail'>Close</button></div>";
     q("#modal").hidden=false;q("#closeDetail").onclick=()=>q("#modal").hidden=true;return;
@@ -112,8 +125,7 @@ function showAuthForm(mode="signin",message=""){
         const {data,error}=await authClient.auth.signInWithPassword({email,password});
         if(error)throw error;
         authUser=data.user;updateAuthButton();
-        if(!authUser.phone_confirmed_at)await beginPhoneVerification(authUser.phone||authUser.user_metadata?.phone||"");
-        else afterSignIn();
+        afterSignIn();
       }
     }catch(error){
       status.textContent=error?.message||"We could not complete that request. Please try again.";
@@ -138,42 +150,54 @@ async function beginPhoneVerification(phone){
   if(!authUser){showAuthForm("signin");return;}
   if(!phone||!validIndianMobile(phone)){showPhoneEntry(phone);return;}
   phoneOtpNumber="+91"+mobileDigits(phone);
-  q("#modalBody").innerHTML="<div class='auth-panel'><span class='eyebrow'>MOBILE VERIFICATION</span><h2>Enter your OTP</h2><p class='muted'>A 6-digit code is being sent to "+authEscape(phoneOtpNumber)+".</p><form id='phoneOtpForm' class='auth-form'><label>6-digit code<input name='token' type='text' inputmode='numeric' autocomplete='one-time-code' maxlength='6' pattern='[0-9]{6}' required placeholder='123456'></label><p id='phoneOtpMessage' class='auth-message' role='status' aria-live='polite'>Enter the SMS code to verify this number.</p><button class='primary wide' type='submit'>Verify mobile number</button><button class='ghost wide' id='resendPhoneOtp' type='button'>Send code again</button></form></div>";
+  q("#modalBody").innerHTML="<div class='auth-panel'><span class='eyebrow'>MOBILE VERIFICATION</span><h2>Verify your Indian mobile</h2><p class='muted'>A 6-digit SMS code is being sent to "+authEscape(phoneOtpNumber)+".</p><form id='phoneOtpForm' class='auth-form'><label>6-digit code<input name='token' type='text' inputmode='numeric' autocomplete='one-time-code' maxlength='6' pattern='[0-9]{6}' required placeholder='123456'></label><p id='phoneOtpMessage' class='auth-message' role='status' aria-live='polite'>Enter the SMS code to verify this number.</p><button class='primary wide' type='submit'>Verify mobile number</button><button class='ghost wide' id='resendPhoneOtp' type='button'>Send code again</button></form></div>";
   q("#modal").hidden=false;
+  const message=q("#phoneOtpMessage");
   const form=q("#phoneOtpForm");
-  form.onsubmit=async event=>{
-    event.preventDefault();
-    const submit=form.querySelector('[type="submit"]'),token=String(new FormData(form).get("token")||"").replace(/\D/g,"");
-    if(token.length!==6){q("#phoneOtpMessage").textContent="Enter the 6-digit code.";q("#phoneOtpMessage").classList.add("error");return;}
-    submit.disabled=true;submit.textContent="Verifying…";
+  const sendCode=async()=>{
+    const resend=q("#resendPhoneOtp");
+    if(resend){resend.disabled=true;resend.textContent="Sending…";}
     try{
-      const {data,error}=await authClient.auth.verifyOtp({phone:phoneOtpNumber,token,type:"phone_change"});
-      if(error)throw error;
-      authUser=data.user||authUser;
-      await authClient.from("profiles").update({phone:phoneOtpNumber}).eq("id",authUser.id);
-      afterSignIn();
+      const {data,error}=await authClient.functions.invoke("verify-phone",{body:{action:"send",phone:phoneOtpNumber}});
+      if(error||!data?.success)throw new Error(data?.error||error?.message||"PHONE_VERIFICATION_FAILED");
+      message.textContent="Code sent. It expires in 10 minutes. You can request another after 60 seconds.";
+      message.classList.remove("error");
     }catch(error){
-      q("#phoneOtpMessage").textContent=error?.message||"We couldn't verify that code.";
-      q("#phoneOtpMessage").classList.add("error");submit.disabled=false;submit.textContent="Verify mobile number";
+      message.textContent=error?.message||"We couldn't send the SMS code. Check the SMS provider setup.";
+      message.classList.add("error");
+    }finally{
+      if(resend){resend.disabled=false;resend.textContent="Send code again";}
     }
   };
-  q("#resendPhoneOtp").onclick=async()=>{
-    try{const {error}=await authClient.auth.updateUser({phone:phoneOtpNumber});if(error)throw error;q("#phoneOtpMessage").textContent="A new code was requested.";q("#phoneOtpMessage").classList.remove("error");}
-    catch(error){q("#phoneOtpMessage").textContent=error?.message||"We couldn't resend the code.";q("#phoneOtpMessage").classList.add("error");}
+  form.onsubmit=async event=>{
+    event.preventDefault();
+    const submit=form.querySelector('[type="submit"]');
+    const token=String(new FormData(form).get("token")||"").replace(/\D/g,"");
+    if(token.length!==6){message.textContent="Enter the 6-digit code.";message.classList.add("error");return;}
+    submit.disabled=true;submit.textContent="Verifying…";message.textContent="";
+    try{
+      const {data,error}=await authClient.functions.invoke("verify-phone",{
+        body:{action:"verify",phone:phoneOtpNumber,code:token}
+      });
+      if(error||!data?.success)throw new Error(data?.error||error?.message||"PHONE_VERIFICATION_FAILED");
+      updateAuthButton();
+      q("#modal").hidden=true;
+      if(pendingDetailId)openDetail(pendingDetailId);
+      else afterSignIn();
+    }catch(error){
+      message.textContent=error?.message||"We couldn't verify that code. Please check it and try again.";
+      message.classList.add("error");
+      submit.disabled=false;submit.textContent="Verify mobile number";
+    }
   };
-  try{
-    const {data,error}=await authClient.auth.updateUser({phone:phoneOtpNumber});
-    if(error)throw error;
-    if(data.user)authUser=data.user;
-  }catch(error){
-    q("#phoneOtpMessage").textContent=error?.message||"SMS could not start. The SMS provider may not be configured yet.";
-    q("#phoneOtpMessage").classList.add("error");
-  }
+  q("#resendPhoneOtp").onclick=sendCode;
+  await sendCode();
 }
 function showAuthAccount(){
   if(!authUser){showAuthForm("signin");return;}
-  q("#modalBody").innerHTML="<div class='auth-panel'><span class='eyebrow'>FLAT FINDER ACCOUNT</span><h2>You're signed in</h2><p class='muted'>"+authEscape(authUser.email)+"</p><p class='auth-message'>Mobile "+(authUser.phone_confirmed_at?"verified":"not yet verified")+".</p><button class='primary wide' id='viewPlansNow' type='button'>View membership plans</button><button class='ghost wide' id='signOutBtn' type='button'>Sign out</button></div>";
+  q("#modalBody").innerHTML="<div class='auth-panel'><span class='eyebrow'>FLAT FINDER ACCOUNT</span><h2>You're signed in</h2><p class='muted'>"+authEscape(authUser.email)+"</p><p class='auth-message' id='mobileStatus'>Checking mobile verification…</p><button class='primary wide' id='viewPlansNow' type='button'>View membership plans</button><button class='ghost wide' id='signOutBtn' type='button'>Sign out</button></div>";
   q("#modal").hidden=false;
+  getPhoneVerification().then(status=>{const el=q("#mobileStatus");if(el)el.textContent=status.verified?"Mobile verified: "+status.phone:"Mobile not verified yet.";}).catch(()=>{const el=q("#mobileStatus");if(el)el.textContent="Mobile verification status unavailable.";});
   q("#viewPlansNow").onclick=()=>openPlans(pendingDetailId);
   q("#signOutBtn").onclick=async()=>{
     const button=q("#signOutBtn");button.disabled=true;button.textContent="Signing out…";
