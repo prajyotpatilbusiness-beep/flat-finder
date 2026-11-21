@@ -8,7 +8,7 @@ const PLANS = {
   plus: { monthly: 499, annual: 4990, contacts: 15 },
   pro: { monthly: 999, annual: 9990, contacts: 50 },
 };
-const state = { interval: "monthly", user: null, usage: null, pendingPhone: "", pendingPlan: "", pendingListingId: null };
+const state = { interval: "monthly", user: null, usage: null, pendingPhone: "", pendingPlan: "", pendingListingId: null, otpRequested: false };
 
 function message(text, error = false) {
   const el = q("#page-message");
@@ -83,6 +83,7 @@ async function refreshUsage() {
 }
 
 function showPhoneVerification(phone = "") {
+  state.otpRequested = false;
   q("#phone-verify-card").hidden = false;
   q("#send-otp-form").hidden = false;
   q("#verify-otp-form").hidden = true;
@@ -101,6 +102,7 @@ async function sendOtp(event) {
     return;
   }
   const phone = "+91" + mobile;
+  state.otpRequested = true;
   const button = q("#send-otp-button");
   button.disabled = true;
   button.textContent = "Sending OTP…";
@@ -115,6 +117,7 @@ async function sendOtp(event) {
     q("#otp-code").focus();
     verifyMessage("OTP sent. It expires according to your Supabase Auth settings.");
   } catch (error) {
+    state.otpRequested = false;
     verifyMessage(error?.message || "We couldn't send the SMS code. Check the SMS provider setup and try again.", true);
   } finally {
     button.disabled = false;
@@ -140,6 +143,7 @@ async function verifyOtp(event) {
     });
     if (error) throw error;
     state.user = data.user;
+    state.otpRequested = false;
     await authClient.from("profiles")
       .update({ phone: state.pendingPhone })
       .eq("id", state.user.id);
