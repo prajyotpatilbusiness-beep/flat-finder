@@ -48,8 +48,8 @@ async function openDetail(id){
   if(!listing)return;
   if(!authUser){pendingDetailId=id;showAuthForm("signin","Sign in or create a free account to continue to full property details.");return;}
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id))){
-    q("#modalBody").innerHTML="<div class='auth-panel'><span class='eyebrow'>SAMPLE PREVIEW</span><h2>This is a demo property</h2><p class='muted'>This sample is not a real home and has no real owner or phone number. Owner contacts will appear only on live, approved listings.</p><button class='primary wide' id='demoPlans'>View plans</button><button class='ghost wide' id='closeDetail'>Close</button></div>";
-    q("#modal").hidden=false;q("#demoPlans").onclick=()=>{q("#modal").hidden=true;openPlans(id)};q("#closeDetail").onclick=()=>q("#modal").hidden=true;return;
+    q("#modalBody").innerHTML="<div class='auth-panel'><span class='eyebrow'>SAMPLE PREVIEW</span><h2>This is a demo property</h2><p class='muted'>This sample is not a real home and has no real owner or phone number. Paid access will apply only to live, approved listings with a verified owner.</p><button class='ghost wide' id='closeDetail'>Close</button></div>";
+    q("#modal").hidden=false;q("#closeDetail").onclick=()=>q("#modal").hidden=true;return;
   }
   const {data:usageData,error:usageError}=await authClient.rpc("get_my_contact_usage");
   if(usageError){showNotice("Membership status unavailable",usageError.message);return;}
