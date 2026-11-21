@@ -188,6 +188,14 @@ async function startCheckout(planId) {
     }
     message("Upgrading to " + planId.toUpperCase() + ". Your owner contacts already used this month will carry forward; this upgrade is charged at the listed price without proration.");
   }
+  if (state.usage?.contacts_limit) {
+    const activeRank = PLAN_RANK[state.usage.plan_id] || 0;
+    if ((PLAN_RANK[planId] || 0) <= activeRank) {
+      message("Your " + state.usage.plan_id.toUpperCase() + " plan is active. Select a higher tier to upgrade, or wait until this plan expires.", true);
+      return;
+    }
+    message("This upgrade is charged at the listed price without proration. Owner contacts already used this month carry forward.");
+  }
   if (!(await requireVerifiedPhone())) {
     state.pendingPlan = planId;
     verifyMessage("Verify your mobile number to continue to checkout.");
