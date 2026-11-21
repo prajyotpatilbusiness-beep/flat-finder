@@ -6,8 +6,8 @@ usage:
   python mb_crawl.py projects-range <city> <start> <end>
   python mb_crawl.py merge <city>
 
-Range indexes are zero-based and end-exclusive. Range output files are safe to
-upload as separate GitHub Actions artifacts and merge after all batches finish.
+Range indexes are zero-based and end-exclusive. Range output files can be
+uploaded as separate GitHub Actions artifacts and merged after all batches finish.
 """
 import gzip
 import hashlib
@@ -49,15 +49,10 @@ def fetch(url):
     for attempt in range(3):
         try:
             parts = urllib.parse.urlsplit(url)
-            safe_path = urllib.parse.quote(parts.path, safe="/%:@!            req = urllib.request.Request(url, headers={"User-Agent": UA})
-            html = urllib.request.urlopen(req, timeout=40).read().decode("utf-8", "ignore")
-            f.write_bytes(gzip.compress(html.encode("utf-8"), 9))
-            time.sleep(DELAY)
-            return html
-        except Exception as e:  # network hiccup: back off and retry
-            print("  retry", attempt + 1, url, e, flush=True)
-            time.sleep(5 * (attempt + 1))'()*+,;=-._~")
-            request_url = urllib.parse.urlunsplit((parts.scheme, parts.netloc, safe_path, parts.query, parts.fragment))
+            safe_path = urllib.parse.quote(parts.path, safe="/%:@!$&'()*+,;=-._~")
+            request_url = urllib.parse.urlunsplit(
+                (parts.scheme, parts.netloc, safe_path, parts.query, parts.fragment)
+            )
             req = urllib.request.Request(request_url, headers={"User-Agent": UA})
             html = urllib.request.urlopen(req, timeout=40).read().decode("utf-8", "ignore")
             f.write_bytes(gzip.compress(html.encode("utf-8"), 9))
@@ -90,7 +85,10 @@ def crawl_list():
             projects[c["psmid"]] = mb_parse.card_to_project(c)
         print(f"list {n}/{pages}: {len(projects)} projects", flush=True)
     if len(projects) < total * 0.95:
-        raise RuntimeError(f"List crawl collected only {len(projects)} of {total} reported projects; refusing to checkpoint an incomplete index.")
+        raise RuntimeError(
+            f"List crawl collected only {len(projects)} of {total} reported projects; "
+            "refusing to checkpoint an incomplete index."
+        )
     write_json(OUT / "mb_index.json", list(projects.values()))
     print("total reported", total, "collected", len(projects))
 
@@ -112,7 +110,10 @@ def merge_project_parts(index, parts):
     missing = [project_id for project_id in expected if project_id not in by_id]
     extra = [project_id for project_id in by_id if project_id not in expected_set]
     if missing or extra:
-        raise ValueError(f"Project batches do not match the index: {len(missing)} missing, {len(extra)} unexpected.")
+        raise ValueError(
+            f"Project batches do not match the index: {len(missing)} missing, "
+            f"{len(extra)} unexpected."
+        )
     return [by_id[project_id] for project_id in expected]
 
 
@@ -124,21 +125,26 @@ def crawl_projects(start=0, end=None, output_path=None):
     selected = index[start:end]
     from concurrent.futures import ThreadPoolExecutor
 
-    def one(p):
-        html = fetch(p["url"])
+    def one(project):
+        html = fetch(project["url"])
         try:
             detail = mb_parse.parse_project_page(html) if html else {}
         except Exception as e:
-            print("  parse failed", p["url"], e, flush=True)
+            print("  parse failed", project["url"], e, flush=True)
             detail = {}
-        return {**p, **{k: v for k, v in detail.items() if v not in (None, [], "")}}
+        return {
+            **project,
+            **{key: value for key, value in detail.items() if value not in (None, [], "")},
+        }
 
     target = pathlib.Path(output_path) if output_path else (
-        OUT / f"mb_projects_part_{start}_{end}.json" if (start or end != len(index)) else OUT / "mb_projects.json"
+        OUT / f"mb_projects_part_{start}_{end}.json"
+        if (start or end != len(index))
+        else OUT / "mb_projects.json"
     )
     out = []
-    with ThreadPoolExecutor(max_workers=3) as ex:
-        for offset, merged in enumerate(ex.map(one, selected), 1):
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        for offset, merged in enumerate(executor.map(one, selected), 1):
             out.append(merged)
             if offset % 100 == 0 or offset == len(selected):
                 print(f"project {start + offset}/{len(index)}", flush=True)
