@@ -58,7 +58,7 @@ jobs:
               raise SystemExit("The city index is empty; refusing to start detail collection.")
           matrix = json.dumps({"include": include}, separators=(",", ":"))
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-              output.write("project_matrix=" + matrix + "\\n")
+              output.write("project_matrix=" + matrix + "\n")
           print(f"Prepared {count:,} projects in {len(include)} batches of up to {chunk_size:,}.")
           PY
       - uses: actions/upload-artifact@v4
