@@ -30,7 +30,7 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - name: Upgrade known vulnerable direct dependencies
-        run: npm install --save-exact maplibre-gl@6.19.0 vite@6.4.6 vitest@3.2.7
+        run: npm install --save-exact maplibre-gl@6.19.0 vite@6.4.6 vitest@5.1.1
       - name: Audit upgraded dependency tree
         continue-on-error: true
         run: npm audit --audit-level=high
