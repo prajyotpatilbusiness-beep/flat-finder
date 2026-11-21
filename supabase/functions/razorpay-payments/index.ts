@@ -84,7 +84,14 @@ Deno.serve(async (req: Request) => {
   const { data: userResult, error: userError } = await userClient.auth.getUser();
   const user = userResult?.user;
   if (userError || !user) return json({ error: "INVALID_SESSION" }, 401);
-  if (!user.phone_confirmed_at) return json({ error: "PHONE_VERIFICATION_REQUIRED" }, 403);
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("phone,phone_verified_at")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (!profile?.phone_verified_at || !profile.phone) {
+    return json({ error: "PHONE_VERIFICATION_REQUIRED" }, 403);
+  }
 
   let body: Record<string, unknown>;
   try {
