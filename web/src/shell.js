@@ -56,6 +56,7 @@ import { authClient, authConfigured } from "./auth.js";
   const dateLabel = (value) => value ? new Intl.DateTimeFormat("en-IN", { dateStyle: "long" }).format(new Date(value)) : "Not available";
   const tabTitle = (tab) => ({
     overview: "Your account",
+    membership: "Membership",
     details: "Personal details",
     settings: "Settings & preferences",
     security: "Security"
@@ -200,13 +201,50 @@ import { authClient, authConfigured } from "./auth.js";
           <article><span>Mobile number</span><strong>${escapeHtml(phone || "Add your number")}</strong><small>India · +91</small></article>
         </div>
         <div class="account-quick-actions">
-          <button type="button" data-jump-account="details"><span>01</span><b>Personal details</b><small>Update your name and mobile number</small><i>→</i></button>
-          <button type="button" data-jump-account="settings"><span>02</span><b>Settings & preferences</b><small>Choose your account preferences</small><i>→</i></button>
-          <button type="button" data-jump-account="security"><span>03</span><b>Security</b><small>Manage your password and sign-in</small><i>→</i></button>
+          <button type="button" data-jump-account="membership"><span>01</span><b>Membership</b><small>View your plan and owner-contact allowance</small><i>→</i></button>
+          <button type="button" data-jump-account="details"><span>02</span><b>Personal details</b><small>Update your name and mobile number</small><i>→</i></button>
+          <button type="button" data-jump-account="settings"><span>03</span><b>Settings & preferences</b><small>Choose your account preferences</small><i>→</i></button>
+          <button type="button" data-jump-account="security"><span>04</span><b>Security</b><small>Manage your password and sign-in</small><i>→</i></button>
         </div>`;
       accountContent.querySelectorAll("[data-jump-account]").forEach((button) =>
         button.addEventListener("click", () => setAccountTab(button.dataset.jumpAccount))
       );
+      return;
+    }
+
+    if (currentAccountTab === "membership") {
+      accountContent.innerHTML = `
+        <div class="account-section-intro"><h2>Membership</h2><p>See your current plan and how many verified owner contacts remain.</p></div>
+        <div id="account-membership-summary" class="account-membership-summary"><div class="account-loading">Checking your membership…</div></div>
+        <button class="account-primary" id="account-open-plans" type="button">View plans and upgrade</button>
+        <p class="account-fine">Owner contacts count once per unique owner in each paid billing period. Contact limits are enforced by the database.</p>`;
+      const summary = accountContent.querySelector("#account-membership-summary");
+      authClient.rpc("get_my_contact_usage").then(({ data, error }) => {
+        if (!summary.isConnected) return;
+        if (error) {
+          summary.innerHTML = '<p class="account-notice error">' + escapeHtml(error.message || "Could not load membership details.") + '</p>';
+          return;
+        }
+        const usage = Array.isArray(data) ? data[0] : data;
+        const planId = usage?.plan_id || "free";
+        const limit = Number(usage?.contacts_limit || 0);
+        const used = Number(usage?.contacts_used || 0);
+        const names = { free: "Free Explorer", starter: "Starter", plus: "Plus", pro: "Pro" };
+        const renewal = usage?.current_period_end
+          ? dateLabel(usage.current_period_end)
+          : "No paid membership is active";
+        summary.innerHTML = `
+          <article><span>Current plan</span><strong>${escapeHtml(names[planId] || "Free Explorer")}</strong></article>
+          <article><span>Owner contacts used</span><strong>${used} of ${limit}</strong></article>
+          <article><span>Billing period ends</span><strong>${escapeHtml(renewal)}</strong></article>
+          <div class="account-membership-track"><i style="width:${limit ? Math.min(100, used / limit * 100) : 0}%"></i></div>`;
+      }).catch((error) => {
+        if (summary.isConnected) summary.innerHTML = '<p class="account-notice error">' + escapeHtml(error?.message || "Could not load membership details.") + '</p>';
+      });
+      accountContent.querySelector("#account-open-plans").addEventListener("click", () => {
+        closeAccountPanel();
+        activate("plans");
+      });
       return;
     }
 
