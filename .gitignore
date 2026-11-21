@@ -10,3 +10,23 @@ __pycache__/
 
 pipeline/cache_*.log
 data/verified/*-ai.json.bak
+
+# Local environment and credential files — never commit
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+.dev.vars
+.dev.vars.*
+.wrangler/
+.secrets/
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+*.secret
+credentials*.json
+service-account*.json

@@ -1,7 +1,15 @@
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { setWorkerUrl } from "maplibre-gl";
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
+
+// Use a bundled same-origin MapLibre worker in production.
+setWorkerUrl(workerUrl);
 import { authClient, authConfigured } from "./auth.js";
 import "./marketplace.css";
+
+if (window.top === window) window.location.replace("/");
+if (new URLSearchParams(location.search).get("embed") === "1") document.body.classList.add("embedded");
 
 let listings=[
 {id:"demo-pune-1",city:"Pune",locality:"Wakad",title:"Ganga Ashiyana Society",purpose:"rent",type:"Apartment",bhk:1,bath:1,area:550,price:18000,deposit:35000,furnishing:"Furnished",amenities:["Parking","Lift","Security","Power backup"],score:9.2,lat:18.5995,lng:73.7604,image:"https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=80",tag:"Owner",distance:"0.4 km from PCCOE"},
