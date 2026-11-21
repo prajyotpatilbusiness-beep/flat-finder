@@ -121,7 +121,7 @@ function showAuthForm(mode="signin",message=""){
         const {data,error}=await authClient.auth.signUp({email,password,options:{data:{display_name:displayName,phone:"+91"+digits},emailRedirectTo:new URL("/",location.origin).href}});
         if(error)throw error;
         if(!data.session){showAuthForm("signin","Account created. Confirm your email, then sign in to verify your mobile number.");return;}
-        authUser=data.user;updateAuthButton();await beginPhoneVerification("+91"+digits);
+        authUser=data.user;updateAuthButton();afterSignIn();
       }else{
         const {data,error}=await authClient.auth.signInWithPassword({email,password});
         if(error)throw error;
@@ -134,7 +134,7 @@ function showAuthForm(mode="signin",message=""){
     }
   };
 }
-function afterSignIn(){updateAuthButton();q("#modal").hidden=true;if(pendingDetailId)openPlans(pendingDetailId);else if(window.parent!==window)window.parent.postMessage({type:"flat-finder:auth-complete"},location.origin);}
+function afterSignIn(){updateAuthButton();q("#modal").hidden=true;if(pendingDetailId)openDetail(pendingDetailId);else if(window.parent!==window)window.parent.postMessage({type:"flat-finder:auth-complete"},location.origin);}
 function showPhoneEntry(phone="",notice=""){
   q("#modalBody").innerHTML="<div class='auth-panel'><span class='eyebrow'>MOBILE VERIFICATION</span><h2>Verify your Indian mobile</h2><p class='muted'>We verify buyers before releasing any owner's contact details.</p><form id='phoneEntryForm' class='auth-form'><label>Mobile number<span class='auth-phone-field'><b>+91</b><input name='mobile' type='tel' inputmode='numeric' maxlength='10' pattern='[6-9][0-9]{9}' required value='"+authEscape(mobileDigits(phone))+"' placeholder='10-digit mobile number'></span></label><p id='phoneEntryMessage' class='auth-message'>"+authEscape(notice)+"</p><button class='primary wide' type='submit'>Send OTP</button></form></div>";
   q("#modal").hidden=false;
