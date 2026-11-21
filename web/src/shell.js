@@ -236,7 +236,7 @@ import { authClient, authConfigured } from "./auth.js";
         summary.innerHTML = `
           <article><span>Current plan</span><strong>${escapeHtml(names[planId] || "Free Explorer")}</strong></article>
           <article><span>Owner contacts used</span><strong>${used} of ${limit}</strong></article>
-          <article><span>Billing period ends</span><strong>${escapeHtml(renewal)}</strong></article>
+          <article><span>Membership expires</span><strong>${escapeHtml(renewal)}</strong></article>
           <div class="account-membership-track"><i style="width:${limit ? Math.min(100, used / limit * 100) : 0}%"></i></div>`;
       }).catch((error) => {
         if (summary.isConnected) summary.innerHTML = '<p class="account-notice error">' + escapeHtml(error?.message || "Could not load membership details.") + '</p>';
