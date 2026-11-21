@@ -20,7 +20,27 @@ const typeList=["Apartment","Independent House","Villa","Studio","PG / Co-living
 const bhkList=["all","1","2","3","4+"];
 function renderChips(){q("#types").innerHTML=typeList.map(x=>"<button class=\"chip "+(state.type===x?"on":"")+" \" data-type=\""+x+"\">"+x+"</button>").join("");q("#bhks").innerHTML=bhkList.map(x=>"<button class=\"chip "+(state.bhk===x?"on":"")+" \" data-bhk=\""+x+"\">"+(x==="all"?"Any":x)+"</button>").join("");qa("[data-type]").forEach(b=>b.onclick=()=>{state.type=b.dataset.type;renderChips();render()});qa("[data-bhk]").forEach(b=>b.onclick=()=>{state.bhk=b.dataset.bhk;render()})}
 function matches(l){if(l.purpose!==state.purpose)return false;if(state.city!=="all"&&l.city!==state.city)return false;var text=(l.city+" "+l.locality+" "+l.title).toLowerCase();if(state.location&&!text.includes(state.location.toLowerCase()))return false;if(state.type&&l.type!==state.type)return false;if(state.bhk!=="all"&&(state.bhk==="4+"?l.bhk<4:String(l.bhk)!==state.bhk))return false;if(l.price>state.budget)return false;var f=qa("#furnishing input:checked").map(x=>x.value);if(f.length&&!f.includes(l.furnishing))return false;var a=qa("#amenities input:checked").map(x=>x.value);if(a.some(v=>!l.amenities.includes(v)))return false;return true}
-function card(l){var saved=state.saved.has(l.id);return "<article class=\"card\"><div class=\"photo\"><img src=\""+l.image+"\" alt=\"\" loading=\"lazy\"><span class=\"tag\">"+l.tag+"</span><button class=\"heart "+(saved?"saved":"")+" \" data-save=\""+l.id+"\">"+(saved?"♥":"♡")+"</button><span class=\"demo-pill\">DEMO</span></div><div class=\"cardbody\"><div class=\"meta\">"+l.bhk+" BHK · "+l.area.toLocaleString("en-IN")+" sq.ft · "+l.locality+"</div><h3>"+l.title+"</h3><p class=\"place\">⌖ "+l.city+" · "+l.distance+"</p><div class=\"price\">"+money(l.price)+" <small>"+(l.purpose==="rent"?"/ month":"sale")+"</small></div><div class=\"score\"><span>★ "+l.score+"</span><small>Bachelor-friendly score</small></div><button class=\"details\" data-detail=\""+l.id+"\">Unlock details & owner contact →</button></div></article>"}
+function card(l){
+  const saved=state.saved.has(l.id);
+  const isDemo=String(l.id).startsWith("demo-");
+  const image=typeof l.image==="string"&&/^https:\/\//i.test(l.image)
+    ? "<img src=\\""+authEscape(l.image)+"\\" alt=\\"\\" loading=\\"lazy\\">"
+    : "<div class=\\"photo-placeholder\\" aria-hidden=\\"true\\">⌂</div>";
+  const facts=[l.bhk?Number(l.bhk)+" BHK":null,l.area?Number(l.area).toLocaleString("en-IN")+" sq.ft":null,l.locality]
+    .filter(Boolean).map(authEscape).join(" · ");
+  const place=[l.city,l.distance].filter(Boolean).map(authEscape).join(" · ");
+  const score=Number(l.score)>0
+    ? "<div class=\\"score\\"><span>★ "+Number(l.score).toFixed(1)+"</span><small>Flat Finder sample score</small></div>"
+    : "";
+  const demo=isDemo?"<span class=\\"demo-pill\\">DEMO</span>":"";
+  return "<article class=\\"card\\"><div class=\\"photo\\">"+image
+    +"<span class=\\"tag\\">"+authEscape(l.tag||"Listing")+"</span>"
+    +"<button class=\\"heart "+(saved?"saved":"")+" \\" data-save=\\""+authEscape(l.id)+"\\">"+(saved?"♥":"♡")+"</button>"
+    +demo+"</div><div class=\\"cardbody\\"><div class=\\"meta\\">"+facts+"</div><h3>"+authEscape(l.title)+"</h3>"
+    +"<p class=\\"place\\">⌖ "+place+"</p><div class=\\"price\\">"+money(Number(l.price)||0)
+    +" <small>"+(l.purpose==="rent"?"/ month":"sale")+"</small></div>"+score
+    +"<button class=\\"details\\" data-detail=\\""+authEscape(l.id)+"\\">Unlock details & owner contact →</button></div></article>";
+}
 function render(){var rows=listings.filter(matches);if(state.sort==="priceAsc")rows.sort((a,b)=>a.price-b.price);if(state.sort==="priceDesc")rows.sort((a,b)=>b.price-a.price);if(state.sort==="area")rows.sort((a,b)=>b.area-a.area);q("#count").textContent=rows.length;q("#context").textContent=(state.city==="all"?"Across India":state.city)+" · "+(state.purpose==="rent"?"Rent":"Buy");q("#budgetLabel").textContent=state.purpose==="rent"?"monthly rent":"maximum sale price";q("#budgetValue").textContent=money(state.budget);q("#cards").innerHTML=rows.length?rows.map(card).join(""):"<div class=\"empty\"><div>⌂</div><h3>No homes match these filters.</h3><p>Try a wider budget, another city or fewer filters.</p><button class=\"primary\" id=\"emptyReset\">Reset filters</button></div>";qa("[data-save]").forEach(b=>b.onclick=()=>toggleSave(b.dataset.save));qa("[data-detail]").forEach(b=>b.onclick=()=>openDetail(b.dataset.detail));var er=q("#emptyReset");if(er)er.onclick=q("#reset").onclick;updateMap(rows)}
 function toggleSave(id){if(state.saved.has(id))state.saved.delete(id);else state.saved.add(id);localStorage.setItem("ff-saved",JSON.stringify([...state.saved]));q("#savedCount").textContent=state.saved.size;render()}
 async function openDetail(id){
@@ -187,8 +207,8 @@ async function loadApprovedListings(){
   const {data,error}=await authClient.from("listing_explore").select("*").limit(100);
   if(error||!data?.length)return;
   listings=data.map(item=>({
-    id:item.id,city:item.city,locality:item.city,title:item.title,purpose:item.purpose,
-    type:item.property_type,bhk:item.bedrooms,bath:0,area:0,
+    id:item.id,city:item.city,locality:item.locality||item.city,title:item.title,purpose:item.purpose,
+    type:item.property_type,bhk:item.bedrooms,bath:0,area:Number(item.area_sqft||0),
     price:item.purpose==="rent"?Number(item.rent_inr||0):Number(item.sale_price_inr||0),
     deposit:0,furnishing:"",amenities:[],score:0,lat:null,lng:null,image:"",tag:"Approved",distance:""
   }));
