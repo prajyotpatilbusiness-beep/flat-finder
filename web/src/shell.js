@@ -147,7 +147,7 @@ import { authClient, authConfigured } from "./auth.js";
     if (!authClient || !currentUser) return null;
     const { data, error } = await authClient
       .from("profiles")
-      .select("id,display_name,phone,created_at")
+      .select("id,display_name,phone,phone_verified_at,created_at")
       .eq("id", currentUser.id)
       .maybeSingle();
     if (error) throw error;
@@ -282,7 +282,7 @@ import { authClient, authConfigured } from "./auth.js";
           </label>
           <label>Indian mobile number
             <span class="account-phone-field"><b>+91</b><input name="mobile" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="10" pattern="[6-9][0-9]{9}" required value="${escapeHtml(phoneDigits)}" placeholder="10-digit mobile number"></span>
-            <small>Enter a 10-digit Indian mobile number. Any number change must be verified by SMS before owner contacts can be unlocked.</small>
+            <small>${currentProfile?.phone_verified_at ? "Verified mobile number." : "Not verified yet. Verify by SMS before unlocking owner contacts."} Any new number must be verified.</small>
           </label>
           <button class="account-primary" type="submit">Save personal details</button>
         </form>`;
@@ -341,19 +341,24 @@ import { authClient, authConfigured } from "./auth.js";
     button.disabled = true;
     button.textContent = "Saving…";
     try {
-      const currentVerifiedPhone = currentUser.phone_confirmed_at ? currentUser.phone : "";
+      const currentVerifiedPhone = currentProfile?.phone_verified_at ? currentProfile.phone : "";
       if (phone !== currentVerifiedPhone) {
-        const { error } = await authClient.auth.updateUser({ phone });
-        if (error) throw error;
+        const { data, error } = await authClient.functions.invoke("verify-phone", {
+          body: { action: "send", phone }
+        });
+        if (error || !data?.success) {
+          const reason = data?.error || error?.message || "PHONE_VERIFICATION_FAILED";
+          throw new Error(reason);
+        }
         pendingProfileChange = { displayName, phone };
-        renderAccountContent("A verification code was requested for your new mobile number.");
+        renderAccountContent("A verification code was sent. Enter it to save your new mobile number.");
         return;
       }
 
       const { data, error } = await authClient.from("profiles")
-        .update({ display_name: displayName, phone })
+        .update({ display_name: displayName })
         .eq("id", currentUser.id)
-        .select("id,display_name,phone,created_at")
+        .select("id,display_name,phone,phone_verified_at,created_at")
         .single();
       if (error) throw error;
       currentProfile = data;
@@ -387,18 +392,17 @@ import { authClient, authConfigured } from "./auth.js";
     button.textContent = "Verifying…";
     try {
       const pending = pendingProfileChange;
-      const { data: authData, error: authError } = await authClient.auth.verifyOtp({
-        phone: pending.phone,
-        token,
-        type: "phone_change"
+      const { data: verification, error: verificationError } = await authClient.functions.invoke("verify-phone", {
+        body: { action: "verify", phone: pending.phone, code: token }
       });
-      if (authError) throw authError;
-      currentUser = authData.user || currentUser;
+      if (verificationError || !verification?.success) {
+        throw new Error(verification?.error || verificationError?.message || "PHONE_VERIFICATION_FAILED");
+      }
 
       const { data, error } = await authClient.from("profiles")
-        .update({ display_name: pending.displayName, phone: pending.phone })
+        .update({ display_name: pending.displayName })
         .eq("id", currentUser.id)
-        .select("id,display_name,phone,created_at")
+        .select("id,display_name,phone,phone_verified_at,created_at")
         .single();
       if (error) throw error;
       currentProfile = data;
@@ -418,8 +422,12 @@ import { authClient, authConfigured } from "./auth.js";
   async function resendProfilePhoneOtp() {
     if (!pendingProfileChange) return;
     try {
-      const { error } = await authClient.auth.updateUser({ phone: pendingProfileChange.phone });
-      if (error) throw error;
+      const { data, error } = await authClient.functions.invoke("verify-phone", {
+        body: { action: "send", phone: pendingProfileChange.phone }
+      });
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || "PHONE_VERIFICATION_FAILED");
+      }
       renderAccountContent("A new verification code has been requested.");
     } catch (error) {
       renderAccountContent(error?.message || "We couldn't resend the SMS code. Please try again.");
