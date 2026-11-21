@@ -24,22 +24,22 @@ function card(l){
   const saved=state.saved.has(l.id);
   const isDemo=String(l.id).startsWith("demo-");
   const image=typeof l.image==="string"&&/^https:\/\//i.test(l.image)
-    ? "<img src=\\""+authEscape(l.image)+"\\" alt=\\"\\" loading=\\"lazy\\">"
-    : "<div class=\\"photo-placeholder\\" aria-hidden=\\"true\\">⌂</div>";
+    ? '<img src="'+authEscape(l.image)+'" alt="" loading="lazy">'
+    : '<div class="photo-placeholder" aria-hidden="true">⌂</div>';
   const facts=[l.bhk?Number(l.bhk)+" BHK":null,l.area?Number(l.area).toLocaleString("en-IN")+" sq.ft":null,l.locality]
     .filter(Boolean).map(authEscape).join(" · ");
   const place=[l.city,l.distance].filter(Boolean).map(authEscape).join(" · ");
   const score=Number(l.score)>0
-    ? "<div class=\\"score\\"><span>★ "+Number(l.score).toFixed(1)+"</span><small>Flat Finder sample score</small></div>"
+    ? '<div class="score"><span>★ '+Number(l.score).toFixed(1)+'</span><small>Flat Finder sample score</small></div>'
     : "";
-  const demo=isDemo?"<span class=\\"demo-pill\\">DEMO</span>":"";
-  return "<article class=\\"card\\"><div class=\\"photo\\">"+image
-    +"<span class=\\"tag\\">"+authEscape(l.tag||"Listing")+"</span>"
-    +"<button class=\\"heart "+(saved?"saved":"")+" \\" data-save=\\""+authEscape(l.id)+"\\">"+(saved?"♥":"♡")+"</button>"
-    +demo+"</div><div class=\\"cardbody\\"><div class=\\"meta\\">"+facts+"</div><h3>"+authEscape(l.title)+"</h3>"
-    +"<p class=\\"place\\">⌖ "+place+"</p><div class=\\"price\\">"+money(Number(l.price)||0)
-    +" <small>"+(l.purpose==="rent"?"/ month":"sale")+"</small></div>"+score
-    +"<button class=\\"details\\" data-detail=\\""+authEscape(l.id)+"\\">Unlock details & owner contact →</button></div></article>";
+  const demo=isDemo?'<span class="demo-pill">DEMO</span>':"";
+  return '<article class="card"><div class="photo">'+image
+    +'<span class="tag">'+authEscape(l.tag||"Listing")+'</span>'
+    +'<button class="heart '+(saved?"saved":"")+'" data-save="'+authEscape(l.id)+'">'+(saved?"♥":"♡")+'</button>'
+    +demo+'</div><div class="cardbody"><div class="meta">'+facts+'</div><h3>'+authEscape(l.title)+'</h3>'
+    +'<p class="place">⌖ '+place+'</p><div class="price">'+money(Number(l.price)||0)
+    +' <small>'+(l.purpose==="rent"?"/ month":"sale")+'</small></div>'+score
+    +'<button class="details" data-detail="'+authEscape(l.id)+'">Unlock details & owner contact →</button></div></article>';
 }
 function render(){var rows=listings.filter(matches);if(state.sort==="priceAsc")rows.sort((a,b)=>a.price-b.price);if(state.sort==="priceDesc")rows.sort((a,b)=>b.price-a.price);if(state.sort==="area")rows.sort((a,b)=>b.area-a.area);q("#count").textContent=rows.length;q("#context").textContent=(state.city==="all"?"Across India":state.city)+" · "+(state.purpose==="rent"?"Rent":"Buy");q("#budgetLabel").textContent=state.purpose==="rent"?"monthly rent":"maximum sale price";q("#budgetValue").textContent=money(state.budget);q("#cards").innerHTML=rows.length?rows.map(card).join(""):"<div class=\"empty\"><div>⌂</div><h3>No homes match these filters.</h3><p>Try a wider budget, another city or fewer filters.</p><button class=\"primary\" id=\"emptyReset\">Reset filters</button></div>";qa("[data-save]").forEach(b=>b.onclick=()=>toggleSave(b.dataset.save));qa("[data-detail]").forEach(b=>b.onclick=()=>openDetail(b.dataset.detail));var er=q("#emptyReset");if(er)er.onclick=q("#reset").onclick;updateMap(rows)}
 function toggleSave(id){if(state.saved.has(id))state.saved.delete(id);else state.saved.add(id);localStorage.setItem("ff-saved",JSON.stringify([...state.saved]));q("#savedCount").textContent=state.saved.size;render()}
