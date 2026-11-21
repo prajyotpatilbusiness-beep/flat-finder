@@ -129,7 +129,7 @@ body{display:flex;flex-direction:column;min-height:100%;overflow:hidden;backgrou
  .account-dialog{max-height:calc(100dvh - 18px);border-radius:18px}
  .account-dialog-head{padding:15px 16px}
  .account-dialog-body{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}
- .account-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:9px;border-right:0;border-bottom:1px solid #eeecf4}
+ .account-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:9px;border-right:0;border-bottom:1px solid #eeecf4}
  .account-nav>button{justify-content:center;gap:4px;min-height:43px;padding:6px 2px;font-size:10px;flex-direction:column}
  .account-nav>button>span{font-size:14px}
  .account-nav-bottom{grid-column:1/-1;margin:0;padding:5px 0 0;border-top:0}
@@ -140,3 +140,11 @@ body{display:flex;flex-direction:column;min-height:100%;overflow:hidden;backgrou
 }
 
 .account-text-button{justify-self:start;padding:4px 0;border:0;background:none;color:#6338f2;font:700 11px "DM Sans",sans-serif;cursor:pointer}
+
+.account-membership-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:15px 0}
+.account-membership-summary article{padding:15px;border:1px solid #ece9f3;border-radius:13px;background:#fcfbfe}
+.account-membership-summary article span{display:block;color:#858397;font-size:10px}
+.account-membership-summary article strong{display:block;margin-top:7px;color:#302d42;font-size:14px;overflow-wrap:anywhere}
+.account-membership-track{grid-column:1/-1;height:8px;border-radius:10px;background:#f0eef5;overflow:hidden}
+.account-membership-track i{display:block;height:100%;border-radius:10px;background:linear-gradient(90deg,#6338f2,#a48cff)}
+@media(max-width:680px){.account-membership-summary{gap:8px}.account-membership-summary article{padding:12px}}
