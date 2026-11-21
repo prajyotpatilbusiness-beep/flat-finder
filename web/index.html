@@ -20,10 +20,13 @@
     <div class="shell-message">Home search + society intelligence, together</div>
     <nav class="shell-tabs" role="tablist" aria-label="Flat Finder tools">
       <button class="shell-tab active" id="tab-homes" type="button" role="tab" aria-selected="true" aria-controls="view-homes" data-tab="homes">
-        <span class="tab-icon">⌕</span><span>Find homes</span>
+        <span class="tab-icon">⌕</span><span>Explore</span>
       </button>
       <button class="shell-tab" id="tab-research" type="button" role="tab" aria-selected="false" aria-controls="view-research" data-tab="research">
         <span class="tab-icon">⌖</span><span>Society research</span>
+      </button>
+      <button class="shell-tab" id="tab-plans" type="button" role="tab" aria-selected="false" aria-controls="view-plans" data-tab="plans">
+        <span class="tab-icon">✧</span><span>Plans</span>
       </button>
     </nav>
     <button class="shell-auth-button" id="shell-auth-button" type="button" aria-haspopup="dialog" aria-controls="account-layer"><span class="shell-account-avatar" id="shell-account-avatar" hidden></span><span id="shell-auth-label">Sign in</span><span class="shell-auth-chevron" aria-hidden="true">⌄</span></button>
@@ -34,6 +37,9 @@
     </section>
     <section class="shell-view" id="view-research" inert aria-hidden="true" role="tabpanel" aria-labelledby="tab-research" hidden>
       <iframe id="frame-research" title="Interactive housing society research map" data-src="/research.html?embed=1" loading="lazy"></iframe>
+    </section>
+    <section class="shell-view" id="view-plans" role="tabpanel" aria-labelledby="tab-plans" hidden>
+      <iframe id="frame-plans" title="Flat Finder subscription plans" data-src="/plans.html?embed=1" loading="lazy"></iframe>
     </section>
     <div class="auth-gate" id="auth-gate" role="region" aria-label="Sign in required">
       <div class="auth-gate-card">
