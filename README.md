@@ -75,7 +75,11 @@ cd ../web && npm install && npm run dev
 
 Tests: `cd pipeline && uv run --with pytest pytest` and `cd web && npx vitest run --root .. cli web/src`.
 
-Cities live in `data/cities.json`. Gurugram is built; Bengaluru and Mumbai are configured and need the pipeline run (see the skill, Job 2).
+Cities live in `data/cities.json`. Gurugram is built; Bengaluru, Mumbai and Pune are configured, but their research datasets still need to be generated.
+
+To generate a city without running Python locally, open **GitHub → Actions → Build city research data → Run workflow**, choose one city, and start the run. It collects Magicbricks project pages and OpenStreetMap context, builds the city files in `web/public/data/`, and commits only the generated web data. Run one city at a time. If a public data source blocks or rate-limits the runner, inspect the workflow log; do not work around captchas or access controls.
+
+New city datasets begin with portal project/listing data and mapped OpenStreetMap context. Bedroom-size matches become verified only after their brochure or RERA floor plans have been read and source pages recorded (Jobs 2a and 3 below). The Gurugram hand-verified dataset is not copied to other cities.
 
 Press `/` to search for a society. The Streets button switches to a street map with road and sector names.
 
