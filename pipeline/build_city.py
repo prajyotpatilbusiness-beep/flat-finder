@@ -222,11 +222,18 @@ def shapes_for(s, area, bld_grid, sid_seed):
     return feats, shape
 
 
+def inside_city_bbox(project, bbox):
+    """Return whether a project coordinate falls within [south, west, north, east]."""
+    south, west, north, east = bbox
+    lat, lng = project.get("lat"), project.get("lng")
+    return lat is not None and lng is not None and south <= lat <= north and west <= lng <= east
+
+
 def main(city="gurgaon"):
     cfg = json.loads((ROOT.parent / "data" / "cities.json").read_text())[city]
     out = OUT / city
     raw = json.loads((out / "mb_projects.json").read_text())
-    located = [p for p in raw if p.get("lat") and p.get("lng") and 28.2 < p["lat"] < 28.7 and 76.7 < p["lng"] < 77.3]
+    located = [p for p in raw if inside_city_bbox(p, cfg["bbox"])]
     not_located = len(raw) - len(located)
     projects = dedupe(located)
     areas = json.loads((out / "osm_areas.geojson").read_text())["features"]
@@ -442,7 +449,7 @@ def main(city="gurgaon"):
                        "ai_read": sum(1 for s in societies if s.get("ai_read")),
                        "for_sale": sum(s["sale_count"] or 0 for s in societies), "for_rent": sum(s["rent_count"] or 0 for s in societies),
                        "verified": sum(s["verified"] for s in societies)},
-            "sources": ["Magicbricks project pages", "OpenStreetMap contributors", "HRERA Gurugram", "Builder brochures (verified rows)"],
+            "sources": ["Magicbricks project pages", "OpenStreetMap contributors", "State RERA filings where available", "Builder brochures (verified rows)"],
             "societies": societies, "events": events}
     details = {}
     for s in societies:  # heavy per-society text, loaded only when a card opens
