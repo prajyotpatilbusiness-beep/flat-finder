@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/src/shell.css">
 </head>
 <body>
-  <header class="shell-header">
+  <header class="shell-header is-locked">
     <a class="shell-brand" href="/" aria-label="Flat Finder home">
       <span class="shell-mark">⌂</span>
       <span class="shell-brand-copy"><strong>Flat Finder</strong><small>Find home. Live better.</small></span>
@@ -31,7 +31,7 @@
     </nav>
     <button class="shell-auth-button" id="shell-auth-button" type="button" aria-haspopup="dialog" aria-controls="account-layer"><span class="shell-account-avatar" id="shell-account-avatar" hidden></span><span id="shell-auth-label">Sign in</span><span class="shell-auth-chevron" aria-hidden="true">⌄</span></button>
   </header>
-  <main class="shell-main">
+  <main class="shell-main is-locked">
     <section class="shell-view active" id="view-homes" role="tabpanel" aria-labelledby="tab-homes">
       <iframe id="frame-homes" title="India-wide home search" src="/marketplace.html?embed=1" loading="eager"></iframe>
     </section>
@@ -41,7 +41,7 @@
     <section class="shell-view" id="view-plans" role="tabpanel" aria-labelledby="tab-plans" hidden>
       <iframe id="frame-plans" title="Flat Finder subscription plans" data-src="/plans.html?embed=1" loading="lazy"></iframe>
     </section>
-    <div class="auth-gate" id="auth-gate" hidden role="region" aria-label="Sign in required">
+    <div class="auth-gate" id="auth-gate" role="region" aria-label="Sign in required">
       <div class="auth-gate-card">
         <div class="auth-gate-mark" aria-hidden="true">⌂</div>
         <p class="auth-gate-kicker">FLAT FINDER MEMBERS</p>
