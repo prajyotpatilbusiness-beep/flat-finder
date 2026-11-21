@@ -33,6 +33,7 @@ import { authClient, authConfigured } from "./auth.js";
   const accountTitle = document.getElementById("account-title");
   const accountSubtitle = document.getElementById("account-subtitle");
   let signedIn = false;
+  let activeView = "homes";
   let currentUser = null;
   let currentProfile = null;
   let currentAccountTab = "overview";
@@ -64,6 +65,7 @@ import { authClient, authConfigured } from "./auth.js";
 
   function activate(name, { updateHash = true } = {}) {
     if (!views[name]) name = "homes";
+    activeView = name;
     for (const key of Object.keys(views)) {
       const active = key === name;
       views[key].hidden = !active;
@@ -72,7 +74,8 @@ import { authClient, authConfigured } from "./auth.js";
       tabs.find((tab) => tab.dataset.tab === key)?.setAttribute("aria-selected", String(active));
     }
     const frame = frames[name];
-    if (frame && !frame.hasAttribute("src") && frame.dataset.src) frame.src = frame.dataset.src;
+    // Do not load application pages or their data until a valid signed-in session exists.
+    if (signedIn && frame && !frame.hasAttribute("src") && frame.dataset.src) frame.src = frame.dataset.src;
     if (frame) {
       try {
         const win = frame.contentWindow;
@@ -120,7 +123,14 @@ import { authClient, authConfigured } from "./auth.js";
       view.setAttribute("aria-hidden", String(locked || view.hidden));
     }
     syncAccountButton();
-    if (locked) closeAccountPanel();
+    if (locked) {
+      // Unload embedded apps on sign-out so their data and map resources leave memory.
+      for (const frame of Object.values(frames)) frame?.removeAttribute("src");
+      closeAccountPanel();
+    } else {
+      // Restore only the tab the member last selected after auth succeeds.
+      activate(activeView, { updateHash: false });
+    }
   }
 
   function setGateMode(mode) {
@@ -682,6 +692,6 @@ import { authClient, authConfigured } from "./auth.js";
   }
 
   tabs.forEach((tab) => tab.addEventListener("click", () => activate(tab.dataset.tab)));
-  const initial = location.hash === "#research" ? "research" : location.hash === "#plans" ? "plans" : "homes";
-  activate(initial, { updateHash: false });
+  activeView = location.hash === "#research" ? "research" : location.hash === "#plans" ? "plans" : "homes";
+  activate(activeView, { updateHash: false });
 })();
