@@ -12,7 +12,6 @@
   <link rel="stylesheet" href="/src/plans.css">
 </head>
 <body>
-  <script>if(new URLSearchParams(location.search).get("embed")==="1")document.body.classList.add("embedded");</script>
 
   <main class="plans-page">
     <header class="plans-local-header">
@@ -93,8 +92,8 @@
     </section>
     <footer class="plans-footer"><span>© Flat Finder</span><span>India-only service · Prices shown in INR</span></footer>
   </main>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script type="module" src="/src/plans.js"></script>
 </body>
 </html>
