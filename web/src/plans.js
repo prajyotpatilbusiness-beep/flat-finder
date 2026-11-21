@@ -221,6 +221,12 @@ async function startCheckout(planId) {
         message("Payment verified. Your " + planId.toUpperCase() + " plan is active.");
         state.usage = null;
         await refreshUsage();
+        if (window.parent !== window) {
+          window.parent.postMessage({
+            type: "flat-finder:subscription-active",
+            listingId: state.pendingListingId
+          }, location.origin);
+        }
       },
       modal: { ondismiss: () => message("Checkout closed. No plan was activated.") },
     });
@@ -274,15 +280,22 @@ window.addEventListener("message", (event) => {
   if (event.origin !== location.origin || event.source !== window.parent) return;
   if (event.data?.type === "flat-finder:pending-listing") {
     state.pendingListingId = event.data.listingId || null;
-    if (state.pendingListingId) message("You're choosing a plan to unlock details for the selected property.");
+    if (state.pendingListingId) message("You're choosing a plan to unlock details for the selected property."); 
+    if (event.data.note) message(event.data.note);
   }
 });
 authClient.auth.onAuthStateChange((_event, session) => {
   state.user = session?.user || null;
   renderAuthState();
   refreshUsage();
-  if (state.user && state.pendingPlan && !state.user.phone_confirmed_at) {
-    showPhoneVerification(state.user.phone || state.user.user_metadata?.phone || "");
+  if (state.user && state.pendingPlan) {
+    if (!state.user.phone_confirmed_at) {
+      showPhoneVerification(state.user.phone || state.user.user_metadata?.phone || "");
+    } else {
+      const selectedPlan = state.pendingPlan;
+      state.pendingPlan = "";
+      startCheckout(selectedPlan);
+    }
   }
 });
 renderPrices();
