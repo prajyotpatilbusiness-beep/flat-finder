@@ -7,6 +7,8 @@ const root = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   root,
   build: {
+    sourcemap: false,
+    minify: "esbuild",
     rollupOptions: {
       input: {
         main: resolve(root, "index.html"),
