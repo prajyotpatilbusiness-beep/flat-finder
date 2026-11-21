@@ -1,6 +1,8 @@
 import { authClient } from "./auth.js";
 import "./plans.css";
 
+if (new URLSearchParams(location.search).get("embed") === "1") document.body.classList.add("embedded");
+
 const q = (selector) => document.querySelector(selector);
 const qa = (selector) => [...document.querySelectorAll(selector)];
 const PLANS = {
