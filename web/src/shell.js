@@ -78,7 +78,7 @@ import { authClient, authConfigured } from "./auth.js";
         if (win) win.dispatchEvent(new win.Event("resize"));
       } catch {}
     }
-    if (updateHash) history.replaceState(null, "", location.pathname + location.search + (name === "homes" ? "#homes" : "#research"));
+    if (updateHash) history.replaceState(null, "", location.pathname + location.search + (name === "homes" ? "#homes" : name === "plans" ? "#plans" : "#research"));
   }
 
   function syncAccountButton() {
