@@ -511,14 +511,29 @@ import { authClient, authConfigured } from "./auth.js";
         activate("plans");
         const send = () => frames.plans?.contentWindow?.postMessage({
           type: "flat-finder:pending-listing",
-          listingId: event.data.listingId || null
+          listingId: event.data.listingId || null,
+          note: event.data.note || ""
         }, location.origin);
         if (frames.plans?.contentDocument?.readyState === "complete") send();
         else frames.plans?.addEventListener("load", send, { once: true });
       }
     }
-    if (event.source === frames.plans?.contentWindow && event.data?.type === "flat-finder:open-auth") {
-      openMarketplaceAuth(event.data.mode || "signin");
+    if (event.source === frames.plans?.contentWindow) {
+      if (event.data?.type === "flat-finder:open-auth") {
+        openMarketplaceAuth(event.data.mode || "signin");
+      }
+      if (event.data?.type === "flat-finder:go-explore") {
+        activate("homes");
+      }
+      if (event.data?.type === "flat-finder:subscription-active") {
+        activate("homes");
+        const send = () => frames.homes?.contentWindow?.postMessage({
+          type: "flat-finder:reopen-detail",
+          listingId: event.data.listingId || null
+        }, location.origin);
+        if (frames.homes?.contentDocument?.readyState === "complete") send();
+        else frames.homes?.addEventListener("load", send, { once: true });
+      }
     }
   });
 
