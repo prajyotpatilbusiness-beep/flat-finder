@@ -1,5 +1,10 @@
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { setWorkerUrl } from 'maplibre-gl';
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+
+// MapLibre v6 with Vite requires its worker URL to be emitted through Vite's worker pipeline.
+setWorkerUrl(workerUrl);
 
 const COLORS = { match: '#6357df', likely: '#e49a39', probable: '#4e8fc7', unknown: '#9aa8b8', no: '#d9e1eb' };
 export const OVERVIEW = { center: [77.065, 28.425], zoom: 12.4, pitch: 50, bearing: 0 };
