@@ -3,6 +3,9 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { authClient, authConfigured } from "./auth.js";
 import "./marketplace.css";
 
+if (window.top === window) window.location.replace("/");
+if (new URLSearchParams(location.search).get("embed") === "1") document.body.classList.add("embedded");
+
 let listings=[
 {id:"demo-pune-1",city:"Pune",locality:"Wakad",title:"Ganga Ashiyana Society",purpose:"rent",type:"Apartment",bhk:1,bath:1,area:550,price:18000,deposit:35000,furnishing:"Furnished",amenities:["Parking","Lift","Security","Power backup"],score:9.2,lat:18.5995,lng:73.7604,image:"https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=80",tag:"Owner",distance:"0.4 km from PCCOE"},
 {id:"demo-pune-2",city:"Pune",locality:"Hinjawadi Phase 1",title:"Park Titanium",purpose:"rent",type:"Apartment",bhk:2,bath:2,area:850,price:24000,deposit:50000,furnishing:"Semi-furnished",amenities:["Parking","Lift","Security","Gym"],score:8.8,lat:18.5914,lng:73.7387,image:"https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=900&q=80",tag:"Broker",distance:"8 min from office hubs"},
