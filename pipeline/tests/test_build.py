@@ -65,3 +65,20 @@ def test_match_verified_needs_whole_name_and_sector():
     assert build_city.match_verified({"match": ["M3M Heights"], "sector": "65"}, ps)["mb_id"] == 2
     assert build_city.match_verified({"match": ["M3M St Andrews"], "sector": "65"}, ps)["mb_id"] == 4
     assert build_city.match_verified({"match": ["M3M Heights"], "sector": "65"}, ps, taken={2}) is None
+
+
+def test_city_bbox_is_configurable_for_each_city():
+    bangalore = {"lat": 12.97, "lng": 77.60}
+    mumbai = {"lat": 19.08, "lng": 72.88}
+    pune = {"lat": 18.5204, "lng": 73.8567}
+
+    assert build_city.inside_city_bbox(bangalore, [12.80, 77.40, 13.20, 77.80])
+    assert build_city.inside_city_bbox(mumbai, [18.89, 72.77, 19.30, 73.05])
+    assert build_city.inside_city_bbox(pune, [18.35, 73.65, 18.72, 74.05])
+    assert not build_city.inside_city_bbox(bangalore, [18.35, 73.65, 18.72, 74.05])
+
+
+def test_city_bbox_excludes_missing_or_outside_coordinates():
+    bbox = [18.35, 73.65, 18.72, 74.05]
+    assert not build_city.inside_city_bbox({"lat": None, "lng": 73.85}, bbox)
+    assert not build_city.inside_city_bbox({"lat": 18.52, "lng": 74.2}, bbox)
