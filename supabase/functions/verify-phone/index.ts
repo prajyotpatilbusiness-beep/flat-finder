@@ -120,36 +120,33 @@ Deno.serve(async (req: Request) => {
       if (profileError) throw new Error("PHONE_OWNERSHIP_CHECK_FAILED");
       if (existingProfile) return json({ error: "MOBILE_ALREADY_REGISTERED" }, 409);
 
-      const since = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-      const { data: recent, error: recentError } = await admin
-        .from("phone_verification_requests")
-        .select("id,sent_at,status")
-        .eq("user_id", user.id)
-        .gte("created_at", since)
-        .order("created_at", { ascending: false })
-        .limit(6);
-      if (recentError) throw new Error("OTP_RATE_LIMIT_CHECK_FAILED");
-
-      if ((recent ?? []).length >= 5) return json({ error: "OTP_DAILY_LIMIT_REACHED" }, 429);
-      const latest = recent?.[0];
-      if (latest && now.getTime() - new Date(latest.sent_at).getTime() < 60_000) {
-        return json({ error: "OTP_COOLDOWN_ACTIVE" }, 429);
+      const { data: reservationRows, error: reservationError } = await admin.rpc(
+        "reserve_phone_otp_send",
+        {
+          p_user_id: user.id,
+          p_phone_hash: phoneHash,
+          p_phone_last_four: phone.slice(-4),
+          p_now: nowIso,
+        },
+      );
+      if (reservationError) {
+        const reason = String(reservationError.message ?? "");
+        if (reason.includes("OTP_PHONE_DAILY_LIMIT_REACHED")) {
+          return json({ error: "OTP_PHONE_DAILY_LIMIT_REACHED" }, 429);
+        }
+        if (reason.includes("OTP_PHONE_COOLDOWN_ACTIVE")) {
+          return json({ error: "OTP_PHONE_COOLDOWN_ACTIVE" }, 429);
+        }
+        if (reason.includes("OTP_DAILY_LIMIT_REACHED")) {
+          return json({ error: "OTP_DAILY_LIMIT_REACHED" }, 429);
+        }
+        if (reason.includes("OTP_COOLDOWN_ACTIVE")) {
+          return json({ error: "OTP_COOLDOWN_ACTIVE" }, 429);
+        }
+        throw new Error("OTP_RESERVATION_FAILED");
       }
-
-      const { data: request, error: requestError } = await admin
-        .from("phone_verification_requests")
-        .insert({
-          user_id: user.id,
-          phone_hash: phoneHash,
-          phone_last_four: phone.slice(-4),
-          status: "pending",
-          attempts: 0,
-          sent_at: nowIso,
-          expires_at: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
-        })
-        .select("id")
-        .single();
-      if (requestError) throw new Error("OTP_REQUEST_CREATE_FAILED");
+      const request = Array.isArray(reservationRows) ? reservationRows[0] : reservationRows;
+      if (!request?.request_id) throw new Error("OTP_RESERVATION_FAILED");
 
       try {
         const body = new URLSearchParams({ To: phone, Channel: "sms" });
@@ -157,14 +154,14 @@ Deno.serve(async (req: Request) => {
       } catch (error) {
         await admin.from("phone_verification_requests")
           .update({ status: "failed" })
-          .eq("id", request.id)
+          .eq("id", request.request_id)
           .eq("user_id", user.id);
         throw error;
       }
 
       return json({
         success: true,
-        requestId: request.id,
+        requestId: request.request_id,
         phoneLastFour: phone.slice(-4),
         expiresInSeconds: 600,
         resendAfterSeconds: 60,
@@ -175,26 +172,26 @@ Deno.serve(async (req: Request) => {
       const code = String(input.code ?? "").replace(/\D/g, "");
       if (!/^\d{6}$/.test(code)) return json({ error: "INVALID_OTP_FORMAT" }, 400);
 
-      const { data: request, error: requestError } = await admin
-        .from("phone_verification_requests")
-        .select("id,phone_hash,attempts,expires_at,status")
-        .eq("user_id", user.id)
-        .eq("phone_hash", phoneHash)
-        .eq("status", "pending")
-        .gt("expires_at", nowIso)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (requestError) throw new Error("OTP_REQUEST_LOOKUP_FAILED");
-      if (!request) return json({ error: "OTP_EXPIRED_OR_NOT_FOUND" }, 400);
-      if (request.attempts >= 5) return json({ error: "OTP_ATTEMPT_LIMIT_REACHED" }, 429);
-
-      const { error: attemptError } = await admin
-        .from("phone_verification_requests")
-        .update({ attempts: request.attempts + 1 })
-        .eq("id", request.id)
-        .eq("user_id", user.id);
-      if (attemptError) throw new Error("OTP_ATTEMPT_UPDATE_FAILED");
+      const { data: attemptRows, error: attemptError } = await admin.rpc(
+        "claim_phone_otp_attempt",
+        {
+          p_user_id: user.id,
+          p_phone_hash: phoneHash,
+          p_now: nowIso,
+        },
+      );
+      if (attemptError) {
+        const reason = String(attemptError.message ?? "");
+        if (reason.includes("OTP_ATTEMPT_LIMIT_REACHED")) {
+          return json({ error: "OTP_ATTEMPT_LIMIT_REACHED" }, 429);
+        }
+        if (reason.includes("OTP_EXPIRED_OR_NOT_FOUND")) {
+          return json({ error: "OTP_EXPIRED_OR_NOT_FOUND" }, 400);
+        }
+        throw new Error("OTP_ATTEMPT_RESERVATION_FAILED");
+      }
+      const request = Array.isArray(attemptRows) ? attemptRows[0] : attemptRows;
+      if (!request?.request_id) return json({ error: "OTP_EXPIRED_OR_NOT_FOUND" }, 400);
 
       const checkBody = new URLSearchParams({ To: phone, Code: code });
       let checked: Record<string, unknown>;
@@ -223,7 +220,7 @@ Deno.serve(async (req: Request) => {
 
       await admin.from("phone_verification_requests")
         .update({ status: "verified", verified_at: verifiedAt })
-        .eq("id", request.id)
+        .eq("id", request.request_id)
         .eq("user_id", user.id);
 
       return json({
@@ -242,6 +239,8 @@ Deno.serve(async (req: Request) => {
       SMS_RATE_LIMITED: "SMS_RATE_LIMITED",
       OTP_COOLDOWN_ACTIVE: "OTP_COOLDOWN_ACTIVE",
       OTP_DAILY_LIMIT_REACHED: "OTP_DAILY_LIMIT_REACHED",
+      OTP_PHONE_DAILY_LIMIT_REACHED: "OTP_PHONE_DAILY_LIMIT_REACHED",
+      OTP_PHONE_COOLDOWN_ACTIVE: "OTP_PHONE_COOLDOWN_ACTIVE",
       PHONE_OWNERSHIP_CHECK_FAILED: "PHONE_OWNERSHIP_CHECK_FAILED",
       SMS_PROVIDER_REQUEST_FAILED: "SMS_PROVIDER_REQUEST_FAILED",
     };
