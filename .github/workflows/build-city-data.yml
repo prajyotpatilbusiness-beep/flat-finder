@@ -14,13 +14,94 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: city-data-${{ inputs.city }}
   cancel-in-progress: false
 
 jobs:
-  build:
+  prepare:
+    name: Collect city index
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    outputs:
+      project_matrix: ${{ steps.matrix.outputs.project_matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Collect all project links
+        env:
+          CITY: ${{ inputs.city }}
+        run: python pipeline/mb_crawl.py list "$CITY"
+      - name: Create sequential project batches
+        id: matrix
+        env:
+          CITY: ${{ inputs.city }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          city = os.environ["CITY"]
+          index_path = Path("pipeline/out") / city / "mb_index.json"
+          count = len(json.loads(index_path.read_text()))
+          chunk_size = 5000
+          include = [
+              {"start": start, "end": min(start + chunk_size, count)}
+              for start in range(0, count, chunk_size)
+          ]
+          if not include:
+              raise SystemExit("The city index is empty; refusing to start detail collection.")
+          matrix = json.dumps({"include": include}, separators=(",", ":"))
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write("project_matrix=" + matrix + "\\n")
+          print(f"Prepared {count:,} projects in {len(include)} batches of up to {chunk_size:,}.")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.city }}-index
+          path: pipeline/out/${{ inputs.city }}/mb_index.json
+          if-no-files-found: error
+          retention-days: 7
+
+  projects:
+    name: Project details ${{ matrix.start }}-${{ matrix.end }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix: ${{ fromJSON(needs.prepare.outputs.project_matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.city }}-index
+          path: pipeline/out/${{ inputs.city }}
+      - name: Collect this project batch
+        env:
+          CITY: ${{ inputs.city }}
+          START: ${{ matrix.start }}
+          END: ${{ matrix.end }}
+        run: python pipeline/mb_crawl.py projects-range "$CITY" "$START" "$END"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.city }}-projects-${{ matrix.start }}-${{ matrix.end }}
+          path: pipeline/out/${{ inputs.city }}/mb_projects_part_${{ matrix.start }}_${{ matrix.end }}.json
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Build, validate and publish city
+    needs: [prepare, projects]
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
@@ -30,12 +111,23 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Collect city projects and map context
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.city }}-index
+          path: pipeline/out/${{ inputs.city }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ inputs.city }}-projects-*
+          path: pipeline/out/${{ inputs.city }}
+          merge-multiple: true
+      - name: Merge all project batches
+        env:
+          CITY: ${{ inputs.city }}
+        run: python pipeline/mb_crawl.py merge "$CITY"
+      - name: Collect map context and build city dataset
         env:
           CITY: ${{ inputs.city }}
         run: |
-          python pipeline/mb_crawl.py list "$CITY"
-          python pipeline/mb_crawl.py projects "$CITY"
           python pipeline/osm_fetch.py "$CITY"
           python pipeline/build_city.py "$CITY"
       - name: Validate generated city dataset
@@ -49,8 +141,9 @@ jobs:
 
           city = os.environ["CITY"]
           path = Path("web/public/data") / f"{city}.json"
-          if not path.is_file():
-              raise SystemExit(f"Missing generated file: {path}")
+          shapes = Path("web/public/data") / f"{city}-shapes.geojson"
+          if not path.is_file() or not shapes.is_file():
+              raise SystemExit(f"Missing generated city files for {city}.")
           doc = json.loads(path.read_text())
           count = int(doc.get("counts", {}).get("on_map", 0))
           if count < 1:
