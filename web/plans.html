@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f7f5ff">
+  <title>Flat Finder Plans — Verified Owner Contacts</title>
+  <meta name="description" content="Explore Flat Finder membership plans with verified owner contacts and clear monthly limits.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/plans.css">
+</head>
+<body>
+  <main class="plans-page">
+    <header class="plans-local-header">
+      <a href="/" target="_top" class="plans-brand"><span>⌂</span><b>Flat Finder</b></a>
+      <a class="back-explore" href="/" target="_top">← Back to Explore</a>
+    </header>
+
+    <section class="plans-hero">
+      <span class="plans-eyebrow">MEMBERSHIP & OWNER CONTACTS</span>
+      <h1>Find the right home.<br><em>Connect with confidence.</em></h1>
+      <p>Explore listings for free. Choose a membership only when you're ready to unlock full property details and verified owner contact numbers.</p>
+      <div class="plans-trust-line"><span>✓ Verified mobile required</span><span>✓ Owner contact limits enforced by the database</span><span>✓ No broker contact resale</span></div>
+    </section>
+
+    <section class="member-status" id="member-status" hidden>
+      <div><span class="status-label">YOUR MEMBERSHIP</span><h2 id="member-plan-name">Free Explorer</h2><p id="member-usage">Sign in to view your allowance.</p></div>
+      <div class="usage-meter"><div class="usage-meter-top"><span>Owner contacts used</span><b id="usage-count">0 / 0</b></div><div class="usage-track"><i id="usage-fill"></i></div><small id="usage-renewal"></small></div>
+    </section>
+
+    <section class="plan-controls">
+      <div><span class="plans-eyebrow">SIMPLE & TRANSPARENT</span><h2>Choose your plan</h2><p>Contact allowance resets with each new billing period.</p></div>
+      <div class="billing-toggle" role="group" aria-label="Billing interval">
+        <button type="button" class="active" data-interval="monthly">Monthly</button>
+        <button type="button" data-interval="annual">Annual <small>Save up to 2 months</small></button>
+      </div>
+    </section>
+
+    <section class="plan-grid" id="plan-grid" aria-live="polite">
+      <article class="plan-card free-card">
+        <span class="plan-tier">FREE</span><h3>Explorer</h3><p class="plan-caption">Browse and shortlist homes before you pay.</p>
+        <div class="plan-price"><strong>₹0</strong><span>/ forever</span></div>
+        <button type="button" class="plan-secondary" data-plan="free">Explore for free</button>
+        <ul><li>Browse property previews</li><li>Search by city and budget</li><li>Save homes on this device</li><li class="muted-feature">No owner contact unlocks</li></ul>
+      </article>
+      <article class="plan-card">
+        <span class="plan-tier">STARTER</span><h3>Starter</h3><p class="plan-caption">For a focused home search.</p>
+        <div class="plan-price"><strong data-price="starter">₹199</strong><span data-period>/ month</span></div>
+        <p class="plan-offer" data-offer="starter">5 unique owner contacts per billing period</p>
+        <button type="button" class="plan-primary" data-plan="starter">Choose Starter</button>
+        <ul><li>Unlock up to <b>5 owners</b></li><li>Full details on eligible listings</li><li>Verified owner mobile numbers</li><li>Revisit owners already unlocked</li></ul>
+      </article>
+      <article class="plan-card featured">
+        <span class="popular-tag">MOST POPULAR</span><span class="plan-tier">PLUS</span><h3>Plus</h3><p class="plan-caption">More choice for an active search.</p>
+        <div class="plan-price"><strong data-price="plus">₹499</strong><span data-period>/ month</span></div>
+        <p class="plan-offer" data-offer="plus">15 unique owner contacts per billing period</p>
+        <button type="button" class="plan-primary" data-plan="plus">Choose Plus</button>
+        <ul><li>Unlock up to <b>15 owners</b></li><li>Full details on eligible listings</li><li>Verified owner mobile numbers</li><li>More room to compare homes</li></ul>
+      </article>
+      <article class="plan-card">
+        <span class="plan-tier">PRO</span><h3>Pro</h3><p class="plan-caption">For broader searches and families.</p>
+        <div class="plan-price"><strong data-price="pro">₹999</strong><span data-period>/ month</span></div>
+        <p class="plan-offer" data-offer="pro">50 unique owner contacts per billing period</p>
+        <button type="button" class="plan-primary" data-plan="pro">Choose Pro</button>
+        <ul><li>Unlock up to <b>50 owners</b></li><li>Full details on eligible listings</li><li>Verified owner mobile numbers</li><li>Best value for a wider search</li></ul>
+      </article>
+    </section>
+
+    <section class="phone-verify-card" id="phone-verify-card" hidden>
+      <div class="verify-icon">✓</div>
+      <div class="verify-copy"><span class="plans-eyebrow">ONE-TIME PHONE CHECK</span><h2>Verify your Indian mobile number</h2><p>We verify your number before checkout and before any owner contact can be revealed.</p></div>
+      <form id="send-otp-form" class="verify-form">
+        <label>Mobile number <span class="verify-phone-field"><b>+91</b><input id="otp-phone" type="tel" inputmode="numeric" maxlength="10" pattern="[6-9][0-9]{9}" placeholder="10-digit mobile number" required></span></label>
+        <button class="plan-primary" type="submit" id="send-otp-button">Send OTP</button>
+      </form>
+      <form id="verify-otp-form" class="verify-form" hidden>
+        <p class="otp-sent-message" id="otp-sent-message"></p>
+        <label>6-digit verification code <input id="otp-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="123456" required></label>
+        <div class="verify-actions"><button class="plan-primary" type="submit" id="verify-otp-button">Verify number</button><button class="text-button" type="button" id="resend-otp">Send again</button></div>
+      </form>
+      <p class="plan-message" id="phone-verify-message" role="status" aria-live="polite"></p>
+    </section>
+
+    <div class="plan-message page-message" id="page-message" role="status" aria-live="polite"></div>
+
+    <section class="plans-safety">
+      <div class="safety-icon">⌑</div>
+      <div><h3>Owners keep control of their contact details</h3><p>We don't put owner phone numbers in public listing pages. The server releases a number only after the buyer's phone is verified, the owner has a verified number, a paid plan is active and the monthly allowance has room. Brokers cannot unlock unlimited numbers using one subscription.</p></div>
+    </section>
+    <footer class="plans-footer"><span>© Flat Finder</span><span>India-only service · Prices shown in INR</span></footer>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script type="module" src="/src/plans.js"></script>
+</body>
+</html>
