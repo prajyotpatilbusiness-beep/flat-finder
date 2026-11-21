@@ -8,6 +8,7 @@ const PLANS = {
   plus: { monthly: 499, annual: 4990, contacts: 15 },
   pro: { monthly: 999, annual: 9990, contacts: 50 },
 };
+const PLAN_RANK = { starter: 1, plus: 2, pro: 3 };
 const state = { interval: "monthly", user: null, profile: null, usage: null, pendingPhone: "", pendingPlan: "", pendingListingId: null, otpRequested: false };
 
 function message(text, error = false) {
@@ -179,6 +180,14 @@ async function startCheckout(planId) {
     message("Please sign in before choosing a paid plan.", true);
     return;
   }
+  if (state.usage?.contacts_limit) {
+    const activeRank = PLAN_RANK[state.usage.plan_id] || 0;
+    if ((PLAN_RANK[planId] || 0) <= activeRank) {
+      message("Your " + state.usage.plan_id.toUpperCase() + " membership is already active. Choose a higher tier to upgrade, or wait for it to expire.", true);
+      return;
+    }
+    message("Upgrading to " + planId.toUpperCase() + ". Your owner contacts already used this month will carry forward; this upgrade is charged at the listed price without proration.");
+  }
   if (!(await requireVerifiedPhone())) {
     state.pendingPlan = planId;
     verifyMessage("Verify your mobile number to continue to checkout.");
@@ -219,7 +228,7 @@ async function startCheckout(planId) {
           message(verifyError?.message || result?.error || "Payment verification did not complete. Contact support with your Razorpay payment ID.", true);
           return;
         }
-        message("Payment verified. Your " + planId.toUpperCase() + " plan is active.");
+        message("Payment verified. Your " + planId.toUpperCase() + " plan is active. Your monthly owner-contact usage has been carried forward.");
         state.usage = null;
         await refreshUsage();
         if (window.parent !== window) {
