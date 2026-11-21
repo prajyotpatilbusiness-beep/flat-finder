@@ -30,8 +30,18 @@ function validIndianPhone(value: string) {
   return /^\+91[6-9][0-9]{9}$/.test(value);
 }
 
-async function sha256(value: string) {
-  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+async function hashPhone(value: string) {
+  // HMAC the phone with a server-only key so a leaked database hash cannot be
+  // reversed by enumerating possible phone numbers. The key never leaves Edge.
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(SUPABASE_SERVICE_ROLE_KEY),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const bytes = await crypto.subtle.sign("HMAC", key, encoder.encode(value));
   return Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
@@ -105,7 +115,7 @@ Deno.serve(async (req: Request) => {
   if (!validIndianPhone(phone)) return json({ error: "INVALID_INDIAN_MOBILE_NUMBER" }, 400);
 
   try {
-    const phoneHash = await sha256(phone);
+    const phoneHash = await hashPhone(phone);
     const now = new Date();
     const nowIso = now.toISOString();
 
