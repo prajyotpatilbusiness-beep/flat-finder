@@ -138,3 +138,5 @@ body{display:flex;flex-direction:column;min-height:100%;overflow:hidden;backgrou
  .account-overview-grid{gap:8px}
  .account-overview-grid article{padding:12px}
 }
+
+.account-text-button{justify-self:start;padding:4px 0;border:0;background:none;color:#6338f2;font:700 11px "DM Sans",sans-serif;cursor:pointer}
