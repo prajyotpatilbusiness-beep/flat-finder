@@ -132,20 +132,21 @@ Deno.serve(async (req: Request) => {
       const signature = String(body.razorpay_signature ?? "");
       if (!orderId || !paymentId || !signature) return json({ error: "PAYMENT_DETAILS_MISSING" }, 400);
 
-      const expectedSignature = await crypto.subtle.digest(
-        "SHA-256",
-        new Uint8Array(await crypto.subtle.sign(
-          { name: "HMAC", hash: "SHA-256" },
-          await crypto.subtle.importKey(
-            "raw",
-            new TextEncoder().encode(RAZORPAY_KEY_SECRET),
-            { name: "HMAC", hash: "SHA-256" },
-            false,
-            ["sign"],
-          ),
-          new TextEncoder().encode(orderId + "|" + paymentId),
-        )),
-      ).then((buffer) => Array.from(new Uint8Array(buffer), (byte) => byte.toString(16).padStart(2, "0")).join(""));
+      const signingKey = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(RAZORPAY_KEY_SECRET),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"],
+      );
+      const signatureBytes = await crypto.subtle.sign(
+        "HMAC",
+        signingKey,
+        new TextEncoder().encode(orderId + "|" + paymentId),
+      );
+      const expectedSignature = Array.from(new Uint8Array(signatureBytes), (byte) =>
+        byte.toString(16).padStart(2, "0")
+      ).join("");
 
       if (!safeEqual(expectedSignature, signature)) return json({ error: "INVALID_PAYMENT_SIGNATURE" }, 400);
 
