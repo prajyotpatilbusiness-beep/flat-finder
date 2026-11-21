@@ -43,7 +43,7 @@ function renderPrices() {
     const priceEl = document.querySelector('[data-price="' + planId + '"]');
     const offerEl = document.querySelector('[data-offer="' + planId + '"]');
     if (priceEl) priceEl.textContent = formatMoney(price);
-    if (offerEl) offerEl.textContent = PLANS[planId].contacts + " unique owner contacts per " + (state.interval === "annual" ? "year" : "month");
+    if (offerEl) offerEl.textContent = PLANS[planId].contacts + " unique owner contacts per " + "month";
   }
   qa("[data-period]").forEach((el) => el.textContent = state.interval === "annual" ? "/ year" : "/ month");
 }
@@ -64,7 +64,7 @@ function renderUsage() {
   q("#usage-count").textContent = used + " / " + limit;
   q("#usage-fill").style.width = (limit ? Math.min(100, used / limit * 100) : 0) + "%";
   q("#usage-renewal").textContent = usage.current_period_end
-    ? "Renews or expires on " + new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(usage.current_period_end))
+    ? "Membership expires on " + new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(usage.current_period_end)) + ". Contact allowance resets monthly."
     : "No paid plan is active.";
 }
 async function refreshUsage() {
