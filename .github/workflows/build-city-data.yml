@@ -1,0 +1,78 @@
+name: Build city research data
+
+on:
+  workflow_dispatch:
+    inputs:
+      city:
+        description: City to collect and publish
+        required: true
+        type: choice
+        options:
+          - bangalore
+          - mumbai
+          - pune
+
+permissions:
+  contents: write
+
+concurrency:
+  group: city-data-${{ inputs.city }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Collect city projects and map context
+        env:
+          CITY: ${{ inputs.city }}
+        run: |
+          python pipeline/mb_crawl.py list "$CITY"
+          python pipeline/mb_crawl.py projects "$CITY"
+          python pipeline/osm_fetch.py "$CITY"
+          python pipeline/build_city.py "$CITY"
+      - name: Validate generated city dataset
+        env:
+          CITY: ${{ inputs.city }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          city = os.environ["CITY"]
+          path = Path("web/public/data") / f"{city}.json"
+          if not path.is_file():
+              raise SystemExit(f"Missing generated file: {path}")
+          doc = json.loads(path.read_text())
+          count = int(doc.get("counts", {}).get("on_map", 0))
+          if count < 1:
+              raise SystemExit("No city projects were located inside the configured city bounds; refusing to publish an empty dataset.")
+          print(f"Validated {doc['city']['name']}: {count:,} mapped societies.")
+          PY
+      - name: Commit generated website data
+        env:
+          CITY: ${{ inputs.city }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            "web/public/data/${CITY}.json" \
+            "web/public/data/${CITY}-details.json" \
+            "web/public/data/${CITY}-shapes.geojson" \
+            "web/public/data/${CITY}-societies.csv" \
+            "web/public/data/${CITY}-units.csv" \
+            web/public/data/cities.json
+          if git diff --cached --quiet; then
+            echo "No generated data changes to publish."
+            exit 0
+          fi
+          git commit -m "Add ${CITY} society research dataset"
+          git push
