@@ -15,7 +15,9 @@ import json
 import pathlib
 import sys
 import time
+import urllib.parse
 import urllib.request
+from urllib.error import HTTPError
 
 import mb_parse
 
@@ -46,11 +48,27 @@ def fetch(url):
         return gzip.decompress(f.read_bytes()).decode("utf-8", "ignore")
     for attempt in range(3):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": UA})
+            parts = urllib.parse.urlsplit(url)
+            safe_path = urllib.parse.quote(parts.path, safe="/%:@!            req = urllib.request.Request(url, headers={"User-Agent": UA})
             html = urllib.request.urlopen(req, timeout=40).read().decode("utf-8", "ignore")
             f.write_bytes(gzip.compress(html.encode("utf-8"), 9))
             time.sleep(DELAY)
             return html
+        except Exception as e:  # network hiccup: back off and retry
+            print("  retry", attempt + 1, url, e, flush=True)
+            time.sleep(5 * (attempt + 1))'()*+,;=-._~")
+            request_url = urllib.parse.urlunsplit((parts.scheme, parts.netloc, safe_path, parts.query, parts.fragment))
+            req = urllib.request.Request(request_url, headers={"User-Agent": UA})
+            html = urllib.request.urlopen(req, timeout=40).read().decode("utf-8", "ignore")
+            f.write_bytes(gzip.compress(html.encode("utf-8"), 9))
+            time.sleep(DELAY)
+            return html
+        except HTTPError as e:
+            if e.code in (404, 410):
+                print("  unavailable", url, e, flush=True)
+                return None
+            print("  retry", attempt + 1, url, e, flush=True)
+            time.sleep(5 * (attempt + 1))
         except Exception as e:  # network hiccup: back off and retry
             print("  retry", attempt + 1, url, e, flush=True)
             time.sleep(5 * (attempt + 1))
@@ -90,8 +108,9 @@ def merge_project_parts(index, parts):
             by_id[project_id] = project
 
     expected = [project["mb_id"] for project in index]
+    expected_set = set(expected)
     missing = [project_id for project_id in expected if project_id not in by_id]
-    extra = [project_id for project_id in by_id if project_id not in set(expected)]
+    extra = [project_id for project_id in by_id if project_id not in expected_set]
     if missing or extra:
         raise ValueError(f"Project batches do not match the index: {len(missing)} missing, {len(extra)} unexpected.")
     return [by_id[project_id] for project_id in expected]
