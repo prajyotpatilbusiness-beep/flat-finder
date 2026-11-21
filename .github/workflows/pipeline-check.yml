@@ -1,0 +1,27 @@
+name: Pipeline tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "pipeline/**"
+      - "data/**"
+      - ".github/workflows/pipeline-check.yml"
+  pull_request:
+    paths:
+      - "pipeline/**"
+      - "data/**"
+      - ".github/workflows/pipeline-check.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install pytest
+      - name: Run pipeline tests
+        working-directory: pipeline
+        run: python -m pytest -q tests
