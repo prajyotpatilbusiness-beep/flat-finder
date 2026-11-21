@@ -8,7 +8,7 @@ const PLANS = {
   plus: { monthly: 499, annual: 4990, contacts: 15 },
   pro: { monthly: 999, annual: 9990, contacts: 50 },
 };
-const state = { interval: "monthly", user: null, usage: null, pendingPhone: "", pendingPlan: "", pendingListingId: null, otpRequested: false };
+const state = { interval: "monthly", user: null, profile: null, usage: null, pendingPhone: "", pendingPlan: "", pendingListingId: null, otpRequested: false };
 
 function message(text, error = false) {
   const el = q("#page-message");
@@ -108,14 +108,16 @@ async function sendOtp(event) {
   button.textContent = "Sending OTP…";
   verifyMessage("");
   try {
-    const { error } = await authClient.auth.updateUser({ phone });
-    if (error) throw error;
+    const { data, error } = await authClient.functions.invoke("verify-phone", {
+      body: { action: "send", phone },
+    });
+    if (error || !data?.success) throw new Error(data?.error || error?.message || "PHONE_VERIFICATION_FAILED");
     state.pendingPhone = phone;
     q("#send-otp-form").hidden = true;
     q("#verify-otp-form").hidden = false;
-    q("#otp-sent-message").textContent = "A verification code was requested for " + phone + ". Enter the 6-digit code.";
+    q("#otp-sent-message").textContent = "A verification code was sent to " + phone + ". Enter the 6-digit code.";
     q("#otp-code").focus();
-    verifyMessage("OTP sent. It expires according to your Supabase Auth settings.");
+    verifyMessage("Code expires in 10 minutes. You can request another after 60 seconds.");
   } catch (error) {
     state.otpRequested = false;
     verifyMessage(error?.message || "We couldn't send the SMS code. Check the SMS provider setup and try again.", true);
@@ -136,17 +138,12 @@ async function verifyOtp(event) {
   button.textContent = "Verifying…";
   verifyMessage("");
   try {
-    const { data, error } = await authClient.auth.verifyOtp({
-      phone: state.pendingPhone,
-      token,
-      type: "phone_change",
+    const { data, error } = await authClient.functions.invoke("verify-phone", {
+      body: { action: "verify", phone: state.pendingPhone, code: token },
     });
-    if (error) throw error;
-    state.user = data.user;
+    if (error || !data?.success) throw new Error(data?.error || error?.message || "PHONE_VERIFICATION_FAILED");
     state.otpRequested = false;
-    await authClient.from("profiles")
-      .update({ phone: state.pendingPhone })
-      .eq("id", state.user.id);
+    await refreshProfile();
     q("#phone-verify-card").hidden = true;
     message("Your mobile number is verified. You can now choose a plan.");
     await refreshUsage();
@@ -165,8 +162,8 @@ async function verifyOtp(event) {
 }
 async function requireVerifiedPhone() {
   if (!state.user) return false;
-  if (state.user.phone_confirmed_at) return true;
-  const storedPhone = state.user.phone || state.user.user_metadata?.phone || "";
+  if (state.profile?.phone_verified_at) return true;
+  const storedPhone = state.profile?.phone || state.user.user_metadata?.phone || "";
   showPhoneVerification(storedPhone);
   return false;
 }
@@ -210,7 +207,7 @@ async function startCheckout(planId) {
       prefill: {
         name: state.user.user_metadata?.display_name || "",
         email: state.user.email || "",
-        contact: state.user.phone || "",
+        contact: state.profile?.phone || "",
       },
       theme: { color: "#6338f2" },
       handler: async (response) => {
@@ -249,12 +246,27 @@ function requestSignIn() {
     message("Use the Sign in button to access your Flat Finder account.", true);
   }
 }
+async function refreshProfile() {
+  if (!state.user) {
+    state.profile = null;
+    return null;
+  }
+  const { data, error } = await authClient.from("profiles")
+    .select("id,phone,phone_verified_at,display_name,created_at")
+    .eq("id", state.user.id)
+    .maybeSingle();
+  if (error) throw error;
+  state.profile = data || null;
+  return state.profile;
+}
 async function loadSession() {
   const { data } = await authClient.auth.getSession();
   state.user = data.session?.user || null;
+  await refreshProfile();
   renderAuthState();
   await refreshUsage();
 }
+
 q("#send-otp-form").addEventListener("submit", sendOtp);
 q("#verify-otp-form").addEventListener("submit", verifyOtp);
 q("#resend-otp").addEventListener("click", sendOtp);
@@ -290,17 +302,24 @@ window.addEventListener("message", (event) => {
 });
 authClient.auth.onAuthStateChange((_event, session) => {
   state.user = session?.user || null;
-  renderAuthState();
-  refreshUsage();
-  if (state.user && state.pendingPlan) {
-    if (!state.user.phone_confirmed_at) {
-      showPhoneVerification(state.user.phone || state.user.user_metadata?.phone || "");
-    } else {
+  if (!state.user) {
+    state.profile = null;
+    state.usage = null;
+    renderAuthState();
+    renderUsage();
+    return;
+  }
+  refreshProfile().then(() => {
+    renderAuthState();
+    refreshUsage();
+    if (state.pendingPlan && !state.profile?.phone_verified_at && !state.otpRequested) {
+      showPhoneVerification(state.profile?.phone || state.user.user_metadata?.phone || "");
+    } else if (state.pendingPlan && state.profile?.phone_verified_at) {
       const selectedPlan = state.pendingPlan;
       state.pendingPlan = "";
       startCheckout(selectedPlan);
     }
-  }
+  }).catch((error) => message(error?.message || "Could not load your profile.", true));
 });
 renderPrices();
 loadSession().catch((error) => message(error?.message || "Could not load account status.", true));
