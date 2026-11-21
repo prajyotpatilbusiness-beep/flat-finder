@@ -148,3 +148,11 @@ body{display:flex;flex-direction:column;min-height:100%;overflow:hidden;backgrou
 .account-membership-track{grid-column:1/-1;height:8px;border-radius:10px;background:#f0eef5;overflow:hidden}
 .account-membership-track i{display:block;height:100%;border-radius:10px;background:linear-gradient(90deg,#6338f2,#a48cff)}
 @media(max-width:680px){.account-membership-summary{gap:8px}.account-membership-summary article{padding:12px}}
+
+
+/* Logged-out state: blur and disable the site chrome as well as the embedded app. */
+.shell-header.is-locked {
+  filter: blur(8px);
+  pointer-events: none;
+  user-select: none;
+}
