@@ -36,6 +36,7 @@ import { authClient, authConfigured } from "./auth.js";
   let currentUser = null;
   let currentProfile = null;
   let currentAccountTab = "overview";
+  let pendingProfileChange = null;
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (ch) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -210,6 +211,26 @@ import { authClient, authConfigured } from "./auth.js";
     }
 
     if (currentAccountTab === "details") {
+      if (pendingProfileChange) {
+        accountContent.innerHTML = `
+          <div class="account-section-intro"><h2>Verify your new mobile number</h2><p>We sent a 6-digit OTP to ${escapeHtml(pendingProfileChange.phone)}. Verify it before we update your account contact details.</p></div>
+          ${noticeHtml}
+          <form class="account-form" id="account-phone-verify-form">
+            <label>6-digit SMS code
+              <input name="token" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required placeholder="123456">
+            </label>
+            <button class="account-primary" type="submit">Verify new number</button>
+            <button class="ghost" id="account-phone-resend" type="button">Send code again</button>
+            <button class="account-text-button" id="account-phone-cancel" type="button">Cancel</button>
+          </form>`;
+        accountContent.querySelector("#account-phone-verify-form").addEventListener("submit", verifyProfilePhone);
+        accountContent.querySelector("#account-phone-resend").addEventListener("click", resendProfilePhoneOtp);
+        accountContent.querySelector("#account-phone-cancel").addEventListener("click", () => {
+          pendingProfileChange = null;
+          renderAccountContent("Mobile number change cancelled.");
+        });
+        return;
+      }
       accountContent.innerHTML = `
         <div class="account-section-intro"><h2>Personal details</h2><p>Keep your contact information up to date.</p></div>
         ${noticeHtml}
@@ -223,7 +244,7 @@ import { authClient, authConfigured } from "./auth.js";
           </label>
           <label>Indian mobile number
             <span class="account-phone-field"><b>+91</b><input name="mobile" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="10" pattern="[6-9][0-9]{9}" required value="${escapeHtml(phoneDigits)}" placeholder="10-digit mobile number"></span>
-            <small>Enter a 10-digit Indian mobile number. This contact number is not OTP-verified yet.</small>
+            <small>Enter a 10-digit Indian mobile number. Any number change must be verified by SMS before owner contacts can be unlocked.</small>
           </label>
           <button class="account-primary" type="submit">Save personal details</button>
         </form>`;
@@ -275,13 +296,24 @@ import { authClient, authConfigured } from "./auth.js";
     const values = new FormData(form);
     const displayName = String(values.get("displayName") || "").trim();
     const mobile = indianMobileDigits(values.get("mobile"));
+    const phone = "+91" + mobile;
     if (!displayName) return renderAccountContent("Please enter your full name.");
-    if (!/^[6-9]\d{9}$/.test(mobile)) return renderAccountContent("Enter a valid 10-digit Indian mobile number.");
+    if (!validIndianMobile(mobile)) return renderAccountContent("Enter a valid 10-digit Indian mobile number.");
+
     button.disabled = true;
     button.textContent = "Saving…";
     try {
+      const currentVerifiedPhone = currentUser.phone_confirmed_at ? currentUser.phone : "";
+      if (phone !== currentVerifiedPhone) {
+        const { error } = await authClient.auth.updateUser({ phone });
+        if (error) throw error;
+        pendingProfileChange = { displayName, phone };
+        renderAccountContent("A verification code was requested for your new mobile number.");
+        return;
+      }
+
       const { data, error } = await authClient.from("profiles")
-        .update({ display_name: displayName, phone: "+91" + mobile })
+        .update({ display_name: displayName, phone })
         .eq("id", currentUser.id)
         .select("id,display_name,phone,created_at")
         .single();
@@ -292,12 +324,67 @@ import { authClient, authConfigured } from "./auth.js";
     } catch (error) {
       button.disabled = false;
       button.textContent = "Save personal details";
-      const message = error?.message || "We couldn't save your details. Please try again.";
       const box = document.createElement("p");
       box.className = "account-notice error";
       box.setAttribute("role", "alert");
-      box.textContent = message;
+      box.textContent = error?.message || "We couldn't save your details. Please try again.";
       form.prepend(box);
+    }
+  }
+
+  async function verifyProfilePhone(event) {
+    event.preventDefault();
+    if (!pendingProfileChange || !currentUser) return;
+    const form = event.currentTarget;
+    const button = form.querySelector('[type="submit"]');
+    const token = String(new FormData(form).get("token") || "").replace(/\D/g, "");
+    if (token.length !== 6) {
+      const box = document.createElement("p");
+      box.className = "account-notice error";
+      box.textContent = "Enter the 6-digit SMS code.";
+      form.prepend(box);
+      return;
+    }
+    button.disabled = true;
+    button.textContent = "Verifying…";
+    try {
+      const pending = pendingProfileChange;
+      const { data: authData, error: authError } = await authClient.auth.verifyOtp({
+        phone: pending.phone,
+        token,
+        type: "phone_change"
+      });
+      if (authError) throw authError;
+      currentUser = authData.user || currentUser;
+
+      const { data, error } = await authClient.from("profiles")
+        .update({ display_name: pending.displayName, phone: pending.phone })
+        .eq("id", currentUser.id)
+        .select("id,display_name,phone,created_at")
+        .single();
+      if (error) throw error;
+      currentProfile = data;
+      pendingProfileChange = null;
+      syncAccountButton();
+      renderAccountContent("Your new mobile number is verified and your details are saved.");
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = "Verify new number";
+      const box = document.createElement("p");
+      box.className = "account-notice error";
+      box.textContent = error?.message || "We couldn't verify your mobile number. Check the code and try again.";
+      form.prepend(box);
+    }
+  }
+
+  async function resendProfilePhoneOtp() {
+    if (!pendingProfileChange) return;
+    try {
+      const { error } = await authClient.auth.updateUser({ phone: pendingProfileChange.phone });
+      if (error) throw error;
+      renderAccountContent("A new verification code has been requested.");
+    } catch (error) {
+      renderAccountContent(error?.message || "We couldn't resend the SMS code. Please try again.");
     }
   }
 
