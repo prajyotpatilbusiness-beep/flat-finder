@@ -17,7 +17,7 @@ listings=listings.map(item=>({...item,source:item.source||"demo"}));
 const state={
   purpose:"rent",city:"Pune",location:"",type:"all",bhk:"all",
   budget:null,sort:"recommended",source:"all",nearby:null,
-  mode:"campus",anchorId:"pccoe",radiusKm:5,category:"all",activeTab:"home",
+  mode:"campus",anchorId:"pccoe",radiusKm:10,category:"all",activeTab:"home",
   saved:new Set(JSON.parse(localStorage.getItem("ff-saved")||"[]"))
 };
 const money=n=>n>=10000000?"₹"+(n/10000000).toFixed(2)+" Cr":n>=100000?"₹"+(n/100000).toFixed(1)+" L":"₹"+Math.round(n).toLocaleString("en-IN");
@@ -455,7 +455,9 @@ async function openDetail(id){
   if(!listing)return;
   if(!authUser){pendingDetailId=id;showAuthForm("signin","Sign in or create a free account to continue to full property details.");return;}
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id))){
-    q("#modalBody").innerHTML="<div class='auth-panel'><span class='eyebrow'>SAMPLE PREVIEW</span><h2>This is a demo property</h2><p class='muted'>This sample is not a real home and has no real owner or phone number. Paid access will apply only to live, approved listings with a verified owner.</p><button class='ghost wide' id='closeDetail'>Close</button></div>";
+    const image=/^https:\/\//i.test(listing.image||"")?"<img class='detailimg' src='"+authEscape(listing.image)+"' alt='Sample property interior'>":"<div class='detailimg detail-placeholder'>⌂</div>";
+    const amenities=(listing.amenities||[]).map(value=>"<span class='detail-amenity'>✓ "+authEscape(value)+"</span>").join("");
+    q("#modalBody").innerHTML="<article class='property-detail'>"+image+"<div class='property-detail-body'><div class='detail-badges'><span class='detail-owner-badge'>SAMPLE PROPERTY</span><span class='detail-verified-badge'>Illustrative only</span></div><h1>"+authEscape(listing.title)+"</h1><p class='detail-location'>⌖ "+authEscape([listing.locality,listing.city].filter(Boolean).join(", "))+(Number.isFinite(listing.nearbyDistanceKm)?" · "+listing.nearbyDistanceKm.toFixed(1)+" km from "+authEscape(activeAnchor()?.name||"your search point"):"")+"</p><div class='detailstats'><b>"+(listing.bhk||"—")+" BHK<small>Type</small></b><b>"+Number(listing.area||0).toLocaleString("en-IN")+" sq.ft<small>Area</small></b><b>"+money(Number(listing.price)||0)+"<small>"+(listing.purpose==="rent"?"Rent / month":"Sale price")+"</small></b><b>"+money(Number(listing.deposit)||0)+"<small>Deposit</small></b></div><section class='detail-section'><h3>Property highlights</h3><p class='muted'>This sample card demonstrates the Flat Finder property-detail layout. It is not an actual home available for rent or purchase.</p><div class='detail-amenities'>"+(amenities||"<span class='detail-amenity'>Property facts are illustrative</span>")+"</div></section><section class='detail-warning'><b>Sample listing — no real owner or contact details</b><p>Only approved live listings can show verified owner information after the required membership and mobile checks.</p></section><button class='primary wide' id='closeDetail'>Close property details</button></div></article>";
     q("#modal").hidden=false;q("#closeDetail").onclick=()=>q("#modal").hidden=true;return;
   }
   let phoneStatus;
@@ -477,7 +479,8 @@ async function openDetail(id){
   const detail=Array.isArray(details)?details[0]:details;
   if(!detail)return;
   const accessStamp=new Intl.DateTimeFormat("en-IN",{dateStyle:"medium",timeStyle:"short"}).format(new Date());
-  q("#modalBody").innerHTML="<div class='auth-panel'><span class='eyebrow'>VERIFIED OWNER CONTACT</span><h2>"+authEscape(detail.title)+"</h2><p class='muted'>"+authEscape([detail.locality,detail.city,detail.state].filter(Boolean).join(", "))+"</p><div class='detailstats'><b>"+Number(detail.bedrooms||0)+" BHK<small>Bedrooms</small></b><b>"+Number(detail.area_sqft||0).toLocaleString("en-IN")+" sq.ft<small>Area</small></b><b>"+authEscape(detail.purpose==="rent"?"Rent":"For sale")+"</b></div><p>"+authEscape(detail.description||"")+"</p><div class='notice'><b>Owner details</b><br>"+authEscape(detail.owner_name||"Verified owner")+"<br><strong>"+authEscape(detail.owner_phone)+"</strong></div><p class='contact-audit-stamp'>Access recorded for "+authEscape(authUser.email||"your account")+" · "+authEscape(accessStamp)+"</p><p class='auth-footnote'>Do not resell or redistribute this owner's contact details. Unique owners used: "+detail.contacts_used+" of "+detail.contacts_limit+" this month.</p><button class='primary wide' id='closeDetail'>Close</button>";
+  const detailAmenities=(detail.amenities||[]).map(value=>"<span class='detail-amenity'>✓ "+authEscape(value)+"</span>").join("");
+  q("#modalBody").innerHTML="<article class='property-detail'><div class='detail-placeholder detailimg'>⌂</div><div class='property-detail-body'><div class='detail-badges'><span class='detail-owner-badge'>APPROVED LISTING</span><span class='detail-verified-badge'>✓ Verified access</span></div><h1>"+authEscape(detail.title)+"</h1><p class='detail-location'>⌖ "+authEscape([detail.locality,detail.city,detail.state].filter(Boolean).join(", "))+"</p><div class='detailstats'><b>"+Number(detail.bedrooms||0)+" BHK<small>Type</small></b><b>"+Number(detail.area_sqft||0).toLocaleString("en-IN")+" sq.ft<small>Area</small></b><b>"+(detail.purpose==="rent"?money(Number(detail.rent_inr)||0):money(Number(detail.sale_price_inr)||0))+"<small>"+(detail.purpose==="rent"?"Rent / month":"Sale price")+"</small></b><b>"+money(Number(detail.deposit_inr)||0)+"<small>Deposit</small></b></div><section class='detail-section'><h3>Property details</h3><p>"+authEscape(detail.description||"")+"</p><div class='detail-amenities'>"+detailAmenities+"</div></section><section class='owner-contact-panel'><h3>Verified owner</h3><b>"+authEscape(detail.owner_name||"Verified owner")+"</b><p class='owner-phone'>"+authEscape(detail.owner_phone)+"</p><div class='owner-contact-actions'><a href='tel:"+authEscape(detail.owner_phone)+"'>Call owner</a><a href='https://wa.me/91"+authEscape(mobileDigits(detail.owner_phone))+"' target='_blank' rel='noopener noreferrer'>WhatsApp</a></div></section><p class='contact-audit-stamp'>Access recorded for "+authEscape(authUser.email||"your account")+" · "+authEscape(accessStamp)+"</p><p class='auth-footnote'>Do not resell or redistribute this owner's contact details. Unique owners used: "+detail.contacts_used+" of "+detail.contacts_limit+" this month.</p><button class='primary wide' id='closeDetail'>Close property details</button></div></article>";
   q("#modal").hidden=false;q("#closeDetail").onclick=()=>q("#modal").hidden=true;
 }
 
@@ -509,7 +512,7 @@ q("#searchBtn").onclick=()=>{state.location=q("#location").value.trim();render()
 q("#apply").onclick=render;
 q("#reset").onclick=()=>{
   state.location="";state.type="all";state.bhk="all";state.source="all";state.category="all";
-  state.budget=null;state.nearby=null;state.radiusKm=5;
+  state.budget=null;state.nearby=null;state.radiusKm=10;
   for(const id of ["nearby-radius","nearby-origin"])map?.getSource(id)?.setData({type:"FeatureCollection",features:[]});
   qa("[data-category]").forEach(button=>button.classList.toggle("active",button.dataset.category==="all"));
   q("#nearbyStatus").textContent="Pro-only GPS search is off. Campus/office radius search remains available.";
