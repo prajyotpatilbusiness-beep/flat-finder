@@ -24,9 +24,9 @@ const q=s=>document.querySelector(s);
 const qa=s=>[...document.querySelectorAll(s)];
 const typeList=["Apartment","Independent House","Villa","Studio","PG / Co-living"];
 const bhkList=["all","1","2","3","4+"];
-const portalLabels={99acres:"99acres",nobroker:"NoBroker",housing:"Housing.com",flatfinder:"Flat Finder",demo:"Sample"};
+const portalLabels={"99acres":"99acres",nobroker:"NoBroker",housing:"Housing.com",flatfinder:"Flat Finder",demo:"Sample"};
 const cityNames={gurgaon:"Gurugram",bangalore:"Bengaluru",mumbai:"Mumbai",pune:"Pune"};
-const portalHosts={99acres:["99acres.com","www.99acres.com"],nobroker:["nobroker.in","www.nobroker.in"],housing:["housing.com","www.housing.com"]};
+const portalHosts={"99acres":["99acres.com","www.99acres.com"],nobroker:["nobroker.in","www.nobroker.in"],housing:["housing.com","www.housing.com"]};
 
 function safePortalUrl(value,source){
   try{
