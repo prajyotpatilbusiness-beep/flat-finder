@@ -32,12 +32,24 @@ Bedrooms under 8 ft wide are dropped as mis-pairings. Plans that are 3D renders 
 
 ## Buy or rent
 
-Every society shows buy prices and monthly rents per BHK: medians, ranges and counts of live Magicbricks listings (22,018 homes for sale and 7,371 for rent in Gurugram). Where a society has no listings, the site shows **our estimate, marked "~"**, with the working shown:
+Every society shows buy prices and monthly rents per BHK: medians, ranges and counts from the listing observations available to Flat Finder. Magicbricks project pages are the current live source. Additional 99acres and NoBroker observations are supported only when supplied through an authorized CSV/JSON feed; until such a feed is supplied, those portals do not contribute live prices. Where a society has no listings, the site shows **our estimate, marked "~"**, with the working shown:
 
 - rent from price (or price from rent) using the rental yield measured on 960 society and BHK pairs that have both (about 2.5% of the price per year, correlation between log price and log rent 0.91), using the locality's own yield where it has at least 4 pairs;
 - when there are no listings at all, unit size x the project's price per sq ft, then rent via yield.
 
 Cards also show resident ratings by category, review snippets, the 5-year price per sq ft trend, and links to Google Maps (with Google reviews) and directions.
+
+## Additional property portals (permission-aware)
+
+Flat Finder has a normalized import path for authorized 99acres and NoBroker data feeds. It does not scrape these portals or bypass their interfaces.
+
+1. Obtain a feed/export and written permission that covers automated access, aggregation and public display.
+2. Place the non-personal CSV or JSON export at `pipeline/incoming/<city>/99acres.csv` or `pipeline/incoming/<city>/nobroker.csv`.
+3. Run `python pipeline/portal_import.py <city>`, then `python pipeline/build_city.py <city>`.
+
+The importer keeps listing ID, title/society, locality, buy/rent type, asking price, BHK, area, coordinates, portal URL and posting date. It discards seller names, phone numbers, email addresses, photos and other contact/account data. A listing contributes to a society's price statistics only when the society name and locality (or close coordinates) match unambiguously. Per-source counts are retained so the displayed median can be traced to its portals. Unmatched or ambiguous rows are excluded rather than guessed.
+
+NoBroker's published terms restrict the use of its content and reverse engineering to build a competing product. 99acres' current automated-access permission could not be confirmed from an official terms page during this implementation. Therefore, both integrations stay feed-import only unless the relevant rights and permissions are documented.
 
 ## Download the data
 
