@@ -49,7 +49,7 @@ def query_text():
   nwr["office"~"^(it|company|business|coworking)$"]{bbox};
   nwr["building"="office"]["name"]{bbox};
   nwr["landuse"~"^(commercial|industrial)$"]["name"]{bbox};
-  nwr["name"~"IT Park|Technology Park|Business Park|Business Centre|Business Center|Corporate Park|Special Economic Zone|SEZ|Infotech|Knowledge Park|World Trade Center|EON Free Zone|Magarpatta|Hinjawadi|Rajiv Gandhi Infotech",i]{bbox};
+  nwr["name"~"IT Park|Technology Park|Business Park|Business Centre|Business Center|Corporate Park|Special Economic Zone|SEZ|Infotech|Knowledge Park|World Trade Center|EON Free Zone|Magarpatta|Hinjawadi|Rajiv Gandhi Infotech|Industrial Estate|MIDC|Business District|Technology Campus",i]{bbox};
 );
 out center tags;"""
 
@@ -110,7 +110,7 @@ def address(tags):
 def normalize_element(element):
     tags = element.get("tags") or {}
     name = str(tags.get("name") or tags.get("official_name") or "").strip()
-    if not name or EXCLUDE_NAME.search(name):
+    if not name:
         return None
 
     amenity = tags.get("amenity")
@@ -121,6 +121,8 @@ def normalize_element(element):
         group, kind = "campuses", "university"
     elif amenity == "college":
         group, kind = "campuses", "college"
+    elif EXCLUDE_NAME.search(name):
+        return None
     elif OFFICE_NAME.search(name):
         group, kind = "offices", "business_park"
     elif office in {"it", "company", "business", "coworking"}:
