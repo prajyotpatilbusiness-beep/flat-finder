@@ -1,0 +1,78 @@
+name: Build Pune search directory and authorised portal feeds
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "pipeline/pune_places.py"
+      - "pipeline/portal_import.py"
+      - "pipeline/incoming/pune/**"
+      - ".github/workflows/build-pune-search-data.yml"
+  schedule:
+    - cron: "15 23 * * 0"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: flat-finder-pune-search-data
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Refresh Pune campuses, office hubs and licensed portal feeds
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Import authorised Pune portal exports
+        run: python pipeline/portal_import.py pune
+
+      - name: Build Pune college and office search directory from OSM
+        run: python pipeline/pune_places.py
+
+      - name: Validate Pune data and source attribution
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("web/public/data")
+          places = json.loads((root / "pune-search-places.json").read_text(encoding="utf-8"))
+          listings = json.loads((root / "pune-portal-listings.json").read_text(encoding="utf-8"))
+          assert places["source"] == "OpenStreetMap"
+          assert places["licence"] == "Open Database Licence (ODbL) 1.0"
+          assert places.get("attribution")
+          assert len(places.get("campuses", [])) > 0
+          assert len(places.get("offices", [])) > 0
+          assert isinstance(listings, list)
+          assert all(item.get("source") in {"99acres", "nobroker", "housing", "magicbricks"} for item in listings)
+          assert all(item.get("url", "").startswith("https://") for item in listings)
+          assert all(not ({"phone", "owner_name", "email"} & set(item)) for item in listings)
+          print("Pune directory:", len(places["campuses"]), "campuses;",
+                len(places["offices"]), "office hubs")
+          print("Authorised portal facts:", len(listings))
+          from collections import Counter
+          print("By source:", Counter(item["source"] for item in listings))
+          PY
+
+      - name: Publish Pune data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/public/data/pune-search-places.json web/public/data/pune-portal-listings.json
+          if git diff --cached --quiet; then
+            echo "Pune data is unchanged."
+            exit 0
+          fi
+          git commit -m "Publish Pune campus, office and authorised portal data"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
