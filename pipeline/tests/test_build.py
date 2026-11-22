@@ -82,3 +82,54 @@ def test_city_bbox_excludes_missing_or_outside_coordinates():
     bbox = [18.35, 73.65, 18.72, 74.05]
     assert not build_city.inside_city_bbox({"lat": None, "lng": 73.85}, bbox)
     assert not build_city.inside_city_bbox({"lat": 18.52, "lng": 74.2}, bbox)
+
+
+def test_attach_portal_listings_only_when_society_and_locality_match():
+    projects = [{
+        "mb_id": "p1",
+        "name": "Riverfront Residency",
+        "locality": "Kharadi",
+        "lat": 18.55,
+        "lng": 73.94,
+        "sale_listings": [{"bhk": 2, "price": 9_000_000, "psf": 10_000}],
+        "rent_listings": [],
+    }]
+    listings = [
+        {"source": "99acres", "society_name": "Riverfront Residency", "title": "2 BHK",
+         "locality": "Kharadi", "operation": "rent", "price_inr": 32_000, "bhk": 2,
+         "area_sqft": 850, "latitude": None, "longitude": None},
+        {"source": "nobroker", "society_name": "Riverfront Residency", "title": "2 BHK",
+         "locality": "Kharadi", "operation": "buy", "price_inr": 9_500_000, "bhk": 2,
+         "area_sqft": 900, "latitude": 18.55, "longitude": 73.94},
+    ]
+
+    summary = build_city.attach_portal_listings(projects, listings)
+    project = projects[0]
+
+    assert summary["99acres"]["matched"] == 1
+    assert summary["nobroker"]["matched"] == 1
+    assert project["rent_listings"][0]["source"] == "99acres"
+    assert project["sale_listings"][1]["source"] == "nobroker"
+    assert project["_listing_sources"] == {
+        "magicbricks": {"buy": 1, "rent": 0},
+        "99acres": {"buy": 0, "rent": 1},
+        "nobroker": {"buy": 1, "rent": 0},
+    }
+
+
+def test_attach_portal_listings_does_not_guess_across_localities():
+    projects = [{
+        "mb_id": "p1",
+        "name": "Riverfront Residency",
+        "locality": "Kharadi",
+        "lat": 18.55,
+        "lng": 73.94,
+    }]
+    listings = [{
+        "source": "99acres", "society_name": "Riverfront Residency",
+        "locality": "Hinjewadi", "operation": "buy", "price_inr": 9_500_000,
+        "bhk": 2, "latitude": None, "longitude": None,
+    }]
+    summary = build_city.attach_portal_listings(projects, listings)
+    assert summary["99acres"]["unmatched"] == 1
+    assert "sale_listings" not in projects[0]
