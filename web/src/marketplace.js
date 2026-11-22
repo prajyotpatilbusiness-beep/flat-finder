@@ -53,7 +53,7 @@ async function loadPuneSearchPlaces(){
         if(!candidate.name||!Number.isFinite(candidate.lat)||!Number.isFinite(candidate.lng))continue;
         const duplicate=merged.some(item=>item.city==="Pune"&&(
           String(item.name).trim().toLowerCase()===candidate.name.trim().toLowerCase()
-          ||distanceKm(item.lat,item.lng,candidate.lat,candidate.lng)<0.18
+          ||(!item.source&&distanceKm(item.lat,item.lng,candidate.lat,candidate.lng)<0.18)
         ));
         if(!duplicate)merged.push(candidate);
       }
