@@ -15,13 +15,68 @@ let listings=[
 listings=listings.map(item=>({...item,source:item.source||"demo"}));
 
 const state={
-  purpose:"rent",city:"all",location:"",type:"all",bhk:"all",
+  purpose:"rent",city:"Pune",location:"",type:"all",bhk:"all",
   budget:null,sort:"recommended",source:"all",nearby:null,
+  mode:"campus",anchorId:"pccoe",radiusKm:5,category:"all",activeTab:"home",
   saved:new Set(JSON.parse(localStorage.getItem("ff-saved")||"[]"))
 };
 const money=n=>n>=10000000?"₹"+(n/10000000).toFixed(2)+" Cr":n>=100000?"₹"+(n/100000).toFixed(1)+" L":"₹"+Math.round(n).toLocaleString("en-IN");
 const q=s=>document.querySelector(s);
 const qa=s=>[...document.querySelectorAll(s)];
+const searchAnchors={
+ campus:[
+  {id:"pccoe",name:"PCCOE College of Engineering",city:"Pune",lat:18.6466,lng:73.7603},
+  {id:"dypatil",name:"Dr. D. Y. Patil Institute",city:"Pune",lat:18.6480,lng:73.7612},
+  {id:"mitwpu",name:"MIT World Peace University",city:"Pune",lat:18.5518,lng:73.8272},
+  {id:"symbiosis",name:"Symbiosis International University",city:"Pune",lat:18.5362,lng:73.7276},
+  {id:"vitpune",name:"VIT Pune",city:"Pune",lat:18.4635,lng:73.8677},
+  {id:"christ",name:"Christ University",city:"Bengaluru",lat:12.9346,lng:77.6069},
+  {id:"pes",name:"PES University",city:"Bengaluru",lat:12.9345,lng:77.5352},
+  {id:"iitb",name:"IIT Bombay",city:"Mumbai",lat:19.1334,lng:72.9133},
+  {id:"du",name:"Delhi University",city:"Delhi NCR",lat:28.6884,lng:77.2095},
+  {id:"iiith",name:"IIIT Hyderabad",city:"Hyderabad",lat:17.4454,lng:78.3489},
+  {id:"iitm",name:"IIT Madras",city:"Chennai",lat:12.9915,lng:80.2336}
+ ],
+ office:[
+  {id:"hinjawadi",name:"Hinjawadi Phase 1",city:"Pune",lat:18.5911,lng:73.7389},
+  {id:"eon",name:"EON IT Park, Kharadi",city:"Pune",lat:18.5512,lng:73.9478},
+  {id:"magarpatta",name:"Magarpatta City",city:"Pune",lat:18.5165,lng:73.9274},
+  {id:"baner",name:"Baner–Balewadi",city:"Pune",lat:18.5640,lng:73.7769},
+  {id:"itpl",name:"ITPL Whitefield",city:"Bengaluru",lat:12.9847,lng:77.7363},
+  {id:"bkc",name:"Bandra Kurla Complex",city:"Mumbai",lat:19.0610,lng:72.8659},
+  {id:"cybercity",name:"Cyber City, Gurugram",city:"Gurugram",lat:28.4950,lng:77.0890},
+  {id:"hitec",name:"HITEC City",city:"Hyderabad",lat:17.4435,lng:78.3772},
+  {id:"omr",name:"OMR IT Corridor",city:"Chennai",lat:12.9582,lng:80.2455}
+ ]
+};
+function activeAnchor(){return (searchAnchors[state.mode]||[]).find(item=>item.id===state.anchorId)||null;}
+function updateModeControls(){
+ const anchors=searchAnchors[state.mode]||[];
+ if(!anchors.some(item=>item.id===state.anchorId))state.anchorId=anchors[0]?.id||"";
+ const select=q("#anchorSelect");
+ select.innerHTML=anchors.map(item=>"<option value=\\""+authEscape(item.id)+"\\">"+authEscape(item.name)+" · "+authEscape(item.city)+"</option>").join("");
+ select.value=state.anchorId;
+ const anchor=activeAnchor();state.city=anchor?.city||"all";q("#city").value=state.city;
+ q("#anchorEyebrow").textContent=state.mode==="campus"?"CAMPUS SEARCH":"OFFICE SEARCH";
+ q("#anchorLabel").textContent=state.mode==="campus"?"Choose your college":"Choose your workplace";
+ q("#anchorCity").textContent=anchor?.city||"All India";
+ q("#radiusTitle").textContent=state.mode==="campus"?"Distance from campus":"Distance from office";
+ q("#modeSummary").textContent=state.mode==="campus"?"Student-friendly stays and flats around colleges and universities.":"Homes and shared stays around IT parks and business districts.";
+ q("#resultsEyebrow").textContent=state.mode==="campus"?"CAMPUS PICKS":"OFFICE PICKS";
+ qa("[data-mode]").forEach(button=>{const on=button.dataset.mode===state.mode;button.classList.toggle("active",on);button.setAttribute("aria-selected",String(on));});
+ q("#topNearbyTitle").textContent="Top homes near "+(anchor?.name||"your selected area");
+ q("#propertySectionTitle").textContent="Best picks near "+(anchor?.name||"your area");
+ qa("[data-radius]").forEach(button=>button.classList.toggle("active",Number(button.dataset.radius)===state.radiusKm));
+ q("#radiusValue").textContent=state.radiusKm+" KM";
+}
+function setActiveTab(tab){
+ state.activeTab=tab;qa("[data-mobile-tab]").forEach(button=>button.classList.toggle("active",button.dataset.mobileTab===tab));
+ if(tab==="profile"){q("#loginBtn").click();state.activeTab="home";qa("[data-mobile-tab]").forEach(button=>button.classList.toggle("active",button.dataset.mobileTab==="home"));return;}
+ if(tab==="messages"){showNotice("Messages","Owner messaging will appear here when the enquiry and chat feature is connected.");state.activeTab="home";qa("[data-mobile-tab]").forEach(button=>button.classList.toggle("active",button.dataset.mobileTab==="home"));return;}
+ if(tab==="radar")q("#map").scrollIntoView({behavior:"smooth",block:"start"});
+ if(tab==="home")window.scrollTo({top:0,behavior:"smooth"});
+ render();
+}
 const typeList=["all","Apartment","Independent House","Villa","Studio","PG / Co-living"];
 const bhkList=["all","1","2","3","4+"];
 const portalLabels={"99acres":"99acres",nobroker:"NoBroker",housing:"Housing.com",flatfinder:"Flat Finder",demo:"Sample"};
@@ -64,11 +119,18 @@ function matches(l){
   if(state.type!=="all"&&l.type!==state.type)return false;
   if(state.bhk!=="all"&&(state.bhk==="4+"?Number(l.bhk)<4:String(l.bhk)!==state.bhk))return false;
   if(state.budget!=null&&Number(l.price)>state.budget)return false;
+  if(state.category==="flats"&&!["Apartment","Independent House","Villa","Studio"].includes(l.type))return false;
+  if(state.category==="pg"&&!String(l.type||"").toLowerCase().includes("pg"))return false;
+  if(state.category==="hostel"&&!String(l.type||"").toLowerCase().includes("hostel"))return false;
+  if(state.category==="owner"&&!String(l.tag||"").toLowerCase().includes("owner")&&l.source!=="flatfinder")return false;
   if(state.nearby){
     if(l.source==="demo"||l.lat==null||l.lng==null)return false;
     l.nearbyDistanceKm=distanceKm(state.nearby.lat,state.nearby.lng,Number(l.lat),Number(l.lng));
     if(l.nearbyDistanceKm>state.nearby.radiusKm)return false;
-  }
+  }else if(activeAnchor()&&l.lat!=null&&l.lng!=null){
+    l.nearbyDistanceKm=distanceKm(activeAnchor().lat,activeAnchor().lng,Number(l.lat),Number(l.lng));
+    if(l.nearbyDistanceKm>state.radiusKm)return false;
+  }else if(activeAnchor()){return false;}
   const furnishing=qa("#furnishing input:checked").map(x=>x.value);
   if(furnishing.length&&!furnishing.includes(l.furnishing))return false;
   const amenities=qa("#amenities input:checked").map(x=>x.value);
@@ -84,7 +146,7 @@ function card(l){
     : '<div class="photo-placeholder" aria-hidden="true">⌂</div>';
   const facts=[l.bhk?Number(l.bhk)+" BHK":null,l.area?Number(l.area).toLocaleString("en-IN")+" sq.ft":null,l.locality]
     .filter(Boolean).map(authEscape).join(" · ");
-  const place=[l.city,state.nearby&&Number.isFinite(l.nearbyDistanceKm)?l.nearbyDistanceKm.toFixed(1)+" km away":l.distance].filter(Boolean).map(authEscape).join(" · ");
+  const place=[l.city,Number.isFinite(l.nearbyDistanceKm)?l.nearbyDistanceKm.toFixed(1)+" km away":l.distance].filter(Boolean).map(authEscape).join(" · ");
   const score=Number(l.score)>0
     ? '<div class="score"><span>★ '+Number(l.score).toFixed(1)+'</span><small>'+(isDemo?"Sample score":"Flat Finder score")+'</small></div>'
     : "";
@@ -117,12 +179,17 @@ function updateDashboardStats(){
   }
 }
 function render(){
-  const rows=listings.filter(matches);
+  let rows=listings.filter(matches);
+  if(state.activeTab==="saved")rows=rows.filter(item=>state.saved.has(item.id));
   if(state.sort==="priceAsc")rows.sort((a,b)=>a.price-b.price);
   if(state.sort==="priceDesc")rows.sort((a,b)=>b.price-a.price);
   if(state.sort==="area")rows.sort((a,b)=>b.area-a.area);
   q("#count").textContent=rows.length.toLocaleString("en-IN");
-  q("#context").textContent=(state.city==="all"?"Across India":state.city)+" · "+(state.purpose==="rent"?"Rent":"Buy")+(state.source==="all"?"":" · "+(portalLabels[state.source]||state.source));
+  const anchor=activeAnchor();
+  q("#context").textContent=(anchor?anchor.city:"Across India")+" · "+(state.purpose==="rent"?"Rent":"Buy")+" · "+state.radiusKm+" km radius"+(state.activeTab==="saved"?" · Saved":"")+(state.source==="all"?"":" · "+(portalLabels[state.source]||state.source));
+  q("#topNearbyTitle").textContent=(state.activeTab==="saved"?"Saved properties near ":"Top homes near ")+(anchor?.name||"your selected area");
+  const propertyTitle=q("#propertySectionTitle");if(propertyTitle)propertyTitle.textContent=state.activeTab==="saved"?"Your saved properties":"Best picks near "+(anchor?.name||"your area");
+  q("#mobileSavedCount").textContent=state.saved.size;
   q("#budgetLabel").textContent=state.purpose==="rent"?"monthly rent":"maximum sale price";
   q("#budgetValue").textContent=state.budget==null?"Any budget":money(state.budget);
   if(q("#nearbyStatus")&&state.nearby)q("#nearbyStatus").textContent="Showing properties within "+state.nearby.radiusKm+" km. Your exact location is used for this search only.";
@@ -133,12 +200,13 @@ function render(){
     const liveCount=listings.length-sampleCount;
     q("#dataStatus").textContent="Showing "+rows.length.toLocaleString("en-IN")+" matches from "+listings.length.toLocaleString("en-IN")+" records ("+sampleCount.toLocaleString("en-IN")+" clearly labelled samples, "+liveCount.toLocaleString("en-IN")+" imported/approved live listings)."+(liveCount===0?" No live portal feed imports or approved member properties are currently connected.":"");
   }
-  q("#cards").innerHTML=rows.length?rows.map(card).join(""):"<div class=\"empty\"><div>⌂</div><h3>No homes match these filters.</h3><p>Try a wider budget, another city or another listing source.</p><button class=\"primary\" id=\"emptyReset\">Reset filters</button></div>";
+  q("#cards").innerHTML=rows.length?rows.map(card).join(""):"<div class=\\"empty\\"><div>⌂</div><h3>"+(state.activeTab==="saved"?"No saved homes yet.":"No homes found in this radius.")+"</h3><p>"+(state.activeTab==="saved"?"Tap the heart on a property to keep it here.":"Try a wider radius or another nearby campus or office. Live listings will appear here when available.")+"</p><button class=\\"primary\\" id=\\"emptyReset\\">"+(state.activeTab==="saved"?"Explore homes":"Change search")+"</button></div>";
   qa("[data-save]").forEach(b=>b.onclick=()=>toggleSave(b.dataset.save));
   qa("[data-detail]").forEach(b=>b.onclick=()=>openDetail(b.dataset.detail));
   const empty=q("#emptyReset");if(empty)empty.onclick=q("#reset").onclick;
   updateDashboardStats();
   updateMap(rows);
+  updateAnchorMap();
 }
 function toggleSave(id){
   if(state.saved.has(id))state.saved.delete(id);else state.saved.add(id);
