@@ -281,8 +281,20 @@ let map;
 function updateMap(rows){if(!map)return;qa(".map-marker").forEach(x=>x.remove());rows.filter(l=>Number.isFinite(l.lat)&&Number.isFinite(l.lng)).forEach(l=>{var el=document.createElement("button");el.className="map-marker";el.textContent=l.purpose==="rent"?money(l.price):money(l.price).replace("₹","₹");el.title=l.title;el.onclick=()=>{map.flyTo({center:[l.lng,l.lat],zoom:13});openDetail(l.id)};new maplibregl.Marker({element:el}).setLngLat([l.lng,l.lat]).addTo(map)})}
 function initMap(){map=new maplibregl.Map({container:"map",style:import.meta.env.VITE_MAP_STYLE_URL||"https://tiles.openfreemap.org/styles/bright",center:[78.9629,22.5937],zoom:4.5});map.addControl(new maplibregl.NavigationControl({showCompass:false}),"bottom-right");map.on("load",render)}
 qa(".seg button").forEach(b=>b.onclick=()=>{qa(".seg button").forEach(x=>x.classList.remove("on"));b.classList.add("on");state.purpose=b.dataset.purpose;state.budget=state.purpose==="rent"?50000:15000000;q("#budget").max=state.purpose==="rent"?100000:50000000;q("#budget").value=state.budget;render()});
-q("#city").onchange=e=>{state.city=e.target.value;render()};q("#location").oninput=e=>{state.location=e.target.value.trim();render()};q("#budget").oninput=e=>{state.budget=Number(e.target.value);render()};q("#sort").onchange=e=>{state.sort=e.target.value;render()};q("#searchBtn").onclick=()=>{state.location=q("#location").value.trim();render()};q("#apply").onclick=render;
-q("#reset").onclick=()=>{state.city="all";state.location="";state.type="Apartment";state.bhk="all";state.budget=state.purpose==="rent"?50000:15000000;q("#city").value="all";q("#location").value="";qa(".checks input").forEach(x=>x.checked=false);renderChips();render()};
+q("#city").onchange=e=>{state.city=e.target.value;render()};
+q("#source").onchange=e=>{state.source=e.target.value;render()};
+q("#location").oninput=e=>{state.location=e.target.value.trim();render()};
+q("#budget").oninput=e=>{state.budget=Number(e.target.value);render()};
+q("#sort").onchange=e=>{state.sort=e.target.value;render()};
+q("#searchBtn").onclick=()=>{state.location=q("#location").value.trim();render()};
+q("#apply").onclick=render;
+q("#reset").onclick=()=>{
+  state.city="all";state.location="";state.type="Apartment";state.bhk="all";state.source="all";
+  state.budget=state.purpose==="rent"?50000:15000000;
+  q("#city").value="all";q("#source").value="all";q("#location").value="";
+  q("#budget").max=state.purpose==="rent"?100000:50000000;q("#budget").value=state.budget;
+  qa(".checks input").forEach(x=>x.checked=false);renderChips();render();
+};
 q("#closeModal").onclick=()=>q("#modal").hidden=true;q("#modal").onclick=e=>{if(e.target.id==="modal")q("#modal").hidden=true};
 let authUser=null;
 let pendingDetailId=null;
@@ -424,14 +436,27 @@ q("#gridBtn").onclick=()=>{q("#cards").classList.remove("list");q("#gridBtn").cl
 q("#savedCount").textContent=state.saved.size;renderChips();initMap();
 async function loadApprovedListings(){
   if(!authClient)return;
-  const {data,error}=await authClient.from("listing_explore").select("*").limit(100);
-  if(error||!data?.length)return;
-  listings=data.map(item=>({
-    id:item.id,city:item.city,locality:item.locality||item.city,title:item.title,purpose:item.purpose,
-    type:item.property_type,bhk:item.bedrooms,bath:0,area:Number(item.area_sqft||0),
-    price:item.purpose==="rent"?Number(item.rent_inr||0):Number(item.sale_price_inr||0),
-    deposit:0,furnishing:"",amenities:[],score:0,lat:null,lng:null,image:"",tag:"Approved",distance:""
-  }));
-  render();
+  try{
+    const {data,error}=await authClient.from("listing_explore").select("*").limit(100);
+    if(error||!data?.length)return;
+    const approved=data.map(item=>({
+      id:item.id,source:"flatfinder",city:item.city,locality:item.locality||item.city,title:item.title,purpose:item.purpose,
+      type:propertyType(item.property_type),bhk:Number(item.bedrooms)||null,bath:0,area:Number(item.area_sqft||0),
+      price:item.purpose==="rent"?Number(item.rent_inr||0):Number(item.sale_price_inr||0),
+      deposit:0,furnishing:"",amenities:[],score:0,lat:null,lng:null,image:"",tag:"Approved member listing",distance:""
+    }));
+    listings=[...listings.filter(item=>item.source!=="flatfinder"),...approved];
+    render();
+  }catch(error){console.warn("Approved listings could not be loaded:",error);}
+}
+async function loadResearchCityCount(){
+  try{
+    const response=await fetch("/data/cities.json");
+    if(!response.ok)return;
+    const cities=await response.json();
+    if(q("#researchCityCount"))q("#researchCityCount").textContent=Object.keys(cities).length.toLocaleString("en-IN");
+  }catch{}
 }
 loadApprovedListings();
+loadPortalListings();
+loadResearchCityCount();
