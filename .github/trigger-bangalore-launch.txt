@@ -1,1 +1,1 @@
-Publish the available Bengaluru index and completed detail batches with partial coverage clearly labelled.
+Rebuild compact MapLibre indexes for Gurugram and Bengaluru; publish source-linked portal feed data with partial coverage clearly labelled.
