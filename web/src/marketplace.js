@@ -57,7 +57,7 @@ function updateModeControls(){
  const anchors=searchAnchors[state.mode]||[];
  if(state.anchorId!=="all"&&!anchors.some(item=>item.id===state.anchorId))state.anchorId=anchors[0]?.id||"all";
  const select=q("#anchorSelect");
- select.innerHTML="<option value=\\"all\\">"+(state.city==="all"?"All India":"Citywide · "+authEscape(state.city))+"</option>"+anchors.map(item=>"<option value=\\""+authEscape(item.id)+"\\">"+authEscape(item.name)+" · "+authEscape(item.city)+"</option>").join("");
+ select.innerHTML="<option value=\"all\">"+(state.city==="all"?"All India":"Citywide · "+authEscape(state.city))+"</option>"+anchors.map(item=>"<option value=\""+authEscape(item.id)+"\">"+authEscape(item.name)+" · "+authEscape(item.city)+"</option>").join("");
  select.value=state.anchorId;
  const anchor=activeAnchor();if(anchor)state.city=anchor.city;q("#city").value=state.city;
  q("#anchorEyebrow").textContent=state.mode==="campus"?"CAMPUS SEARCH":"OFFICE SEARCH";
@@ -203,7 +203,7 @@ function render(){
     const liveCount=listings.length-sampleCount;
     q("#dataStatus").textContent="Showing "+rows.length.toLocaleString("en-IN")+" matches from "+listings.length.toLocaleString("en-IN")+" records ("+sampleCount.toLocaleString("en-IN")+" clearly labelled samples, "+liveCount.toLocaleString("en-IN")+" imported/approved live listings)."+(liveCount===0?" No live portal feed imports or approved member properties are currently connected.":"");
   }
-  q("#cards").innerHTML=rows.length?rows.map(card).join(""):"<div class=\\"empty\\"><div>⌂</div><h3>"+(state.activeTab==="saved"?"No saved homes yet.":"No homes found in this radius.")+"</h3><p>"+(state.activeTab==="saved"?"Tap the heart on a property to keep it here.":"Try a wider radius or another nearby campus or office. Live listings will appear here when available.")+"</p><button class=\\"primary\\" id=\\"emptyReset\\">"+(state.activeTab==="saved"?"Explore homes":"Change search")+"</button></div>";
+  q("#cards").innerHTML=rows.length?rows.map(card).join(""):"<div class=\"empty\"><div>⌂</div><h3>"+(state.activeTab==="saved"?"No saved homes yet.":"No homes found in this radius.")+"</h3><p>"+(state.activeTab==="saved"?"Tap the heart on a property to keep it here.":"Try a wider radius or another nearby campus or office. Live listings will appear here when available.")+"</p><button class=\"primary\" id=\"emptyReset\">"+(state.activeTab==="saved"?"Explore homes":"Change search")+"</button></div>";
   qa("[data-save]").forEach(b=>b.onclick=()=>toggleSave(b.dataset.save));
   qa("[data-detail]").forEach(b=>b.onclick=()=>openDetail(b.dataset.detail));
   const empty=q("#emptyReset");if(empty)empty.onclick=()=>state.activeTab==="saved"?setActiveTab("home"):q("#reset").click();
