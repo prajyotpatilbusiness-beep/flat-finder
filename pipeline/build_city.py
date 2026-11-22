@@ -127,6 +127,87 @@ def dedupe(projects):
     return kept
 
 
+PORTAL_LABELS = {"magicbricks": "Magicbricks", "99acres": "99acres", "nobroker": "NoBroker"}
+
+
+def attach_portal_listings(projects, listings):
+    """Attach licensed, non-personal portal price observations to confidently matched projects."""
+    summary = {
+        source: {"imported": 0, "matched": 0, "unmatched": 0}
+        for source in ("99acres", "nobroker")
+    }
+    for listing in listings:
+        source = listing.get("source")
+        if source not in summary:
+            continue
+        summary[source]["imported"] += 1
+        listing_tokens = tokens(listing.get("society_name") or listing.get("title"))
+        if not listing_tokens:
+            summary[source]["unmatched"] += 1
+            continue
+        listing_locality = tokens(listing.get("locality"))
+        candidates = []
+        for project in projects:
+            shared = len(listing_tokens & tokens(project.get("name")))
+            if not shared:
+                continue
+            project_locality = tokens(project.get("locality"))
+            locality_match = bool(listing_locality and project_locality and listing_locality & project_locality)
+            distance = None
+            if listing.get("latitude") is not None and listing.get("longitude") is not None:
+                distance = geo.dist_m(
+                    (listing["longitude"], listing["latitude"]),
+                    (project["lng"], project["lat"]),
+                )
+            nearby = distance is not None and distance <= 700
+            if not locality_match and not nearby:
+                continue
+            score = shared * 100 + (50 if locality_match else 0)
+            if distance is not None:
+                score += max(0, 35 - distance / 20)
+            candidates.append((score, project))
+        candidates.sort(key=lambda item: item[0], reverse=True)
+        if not candidates or (
+            len(candidates) > 1 and candidates[0][0] - candidates[1][0] < 10
+        ):
+            summary[source]["unmatched"] += 1
+            continue
+
+        project = candidates[0][1]
+        operation = listing.get("operation")
+        price = listing.get("price_inr")
+        bhk = listing.get("bhk")
+        area = listing.get("area_sqft")
+        if operation not in ("buy", "rent") or not price or not bhk:
+            summary[source]["unmatched"] += 1
+            continue
+        project.setdefault("sale_listings" if operation == "buy" else "rent_listings", []).append({
+            "bhk": bhk,
+            "price": price,
+            "sqft": area,
+            "psf": round(price / area) if area and operation == "buy" else None,
+            "source": source,
+        })
+        project.setdefault("_portal_counts", {}).setdefault(source, {"buy": 0, "rent": 0})
+        project["_portal_counts"][source][operation] += 1
+        summary[source]["matched"] += 1
+
+    for project in projects:
+        sources = {
+            "magicbricks": {
+                "buy": len(project.get("sale_listings") or []) - sum(
+                    v["buy"] for v in project.get("_portal_counts", {}).values()
+                ),
+                "rent": len(project.get("rent_listings") or []) - sum(
+                    v["rent"] for v in project.get("_portal_counts", {}).values()
+                ),
+            }
+        }
+        sources.update(project.get("_portal_counts") or {})
+        project["_listing_sources"] = sources
+    return summary
+
+
 def portal_units(p):
     units = []
     for u in (p.get("configs") or {}).get("units", []) or p.get("card_units") or []:
@@ -236,6 +317,9 @@ def main(city="gurgaon"):
     located = [p for p in raw if inside_city_bbox(p, cfg["bbox"])]
     not_located = len(raw) - len(located)
     projects = dedupe(located)
+    portal_file = out / "portal_listings.json"
+    portal_listings = json.loads(portal_file.read_text(encoding="utf-8")) if portal_file.exists() else []
+    portal_summary = attach_portal_listings(projects, portal_listings)
     areas = json.loads((out / "osm_areas.geojson").read_text())["features"]
     area_grid = Grid(areas, lambda a: geo.centroid(a["geometry"]["coordinates"][0]))
     blds = json.loads((out / "osm_buildings.geojson").read_text())["features"]
@@ -258,7 +342,10 @@ def main(city="gurgaon"):
              "verified": False, "note": None, "images": p.get("images") or [],
              "rating": p.get("rating"), "rating_count": p.get("rating_count"), "review_count": p.get("review_count"),
              "ratings": p.get("ratings") or {}, "reviews": p.get("reviews") or [], "locality_rating": p.get("locality_rating"),
-             "sale_count": p.get("sale_count"), "rent_count": p.get("rent_count"), "psf_now": p.get("psf_now"),
+             "listing_sources": p.get("_listing_sources") or {"magicbricks": {"buy": 0, "rent": 0}},
+             "sale_count": (p.get("sale_count") or 0) + sum(v["buy"] for v in p.get("_portal_counts", {}).values()),
+             "rent_count": (p.get("rent_count") or 0) + sum(v["rent"] for v in p.get("_portal_counts", {}).values()),
+             "psf_now": p.get("psf_now"),
              "trend": p.get("trend") or [], "description": p.get("description"),
              "gmaps": "https://www.google.com/maps/search/?api=1&query=" + urllib.parse.quote(f"{p['name']}, {p.get('locality') or ''}, {cfg['name']}"),
              "prices": pricing.listing_stats(p)}
@@ -448,8 +535,14 @@ def main(city="gurgaon"):
             "counts": {"listed": len(raw), "on_map": len(societies), "not_located": not_located,
                        "ai_read": sum(1 for s in societies if s.get("ai_read")),
                        "for_sale": sum(s["sale_count"] or 0 for s in societies), "for_rent": sum(s["rent_count"] or 0 for s in societies),
-                       "verified": sum(s["verified"] for s in societies)},
+                       "verified": sum(s["verified"] for s in societies),
+                       "portal_listings_matched": sum(v["matched"] for v in portal_summary.values()),
+                       "portal_listings_unmatched": sum(v["unmatched"] for v in portal_summary.values())},
             "sources": ["Magicbricks project pages", "OpenStreetMap contributors", "State RERA filings where available", "Builder brochures (verified rows)"],
+            "listing_sources": ["Magicbricks"] + [
+                PORTAL_LABELS[source] for source, counts in portal_summary.items() if counts["matched"]
+            ],
+            "portal_feeds": portal_summary,
             "societies": societies, "events": events}
     details = {}
     for s in societies:  # heavy per-society text, loaded only when a card opens
@@ -477,7 +570,8 @@ def write_csv(soc_path, unit_path, societies):
             "listings_for_sale", "listings_for_rent", "price_range_min", "price_range_max", "price_per_sqft"]
     for b in range(1, 6):
         cols += [f"buy_{b}bhk_median", f"buy_{b}bhk_estimate", f"rent_{b}bhk_median", f"rent_{b}bhk_estimate", f"{b}bhk_price_flag"]
-    cols += ["rating", "rating_count", "review_count", "amenities", "verified", "smallest_bedroom_ft", "magicbricks_url", "google_maps_url"]
+    cols += ["rating", "rating_count", "review_count", "amenities", "verified", "smallest_bedroom_ft",
+             "listing_sources", "magicbricks_url", "google_maps_url"]
     with open(soc_path, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(cols)
@@ -492,7 +586,9 @@ def write_csv(soc_path, unit_path, societies):
                         (p.get("rent") or {}).get("median"), (p.get("rent_est") or {}).get("value"),
                         "; ".join(f"{k}: {v}" for k, v in (p.get("flags") or {}).items()) or None]
             row += [s["rating"], s["rating_count"], s["review_count"], "; ".join(s["amenities"]), s["verified"],
-                    f"{smallest[0]:.2f} x {smallest[1]:.2f}" if smallest else None, s["url"], s["gmaps"]]
+                    f"{smallest[0]:.2f} x {smallest[1]:.2f}" if smallest else None,
+                    "; ".join(PORTAL_LABELS.get(k, k) for k, v in s.get("listing_sources", {}).items() if v["buy"] or v["rent"]),
+                    s["url"], s["gmaps"]]
             w.writerow(row)
     with open(unit_path, "w", newline="") as f:
         w = csv.writer(f)
