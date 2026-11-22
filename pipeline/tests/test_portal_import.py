@@ -94,3 +94,55 @@ def test_import_city_feeds_dedupes_and_writes_private_safe_schema(tmp_path):
     assert stats["99acres"]["skipped"] == 2
     saved = json.loads((tmp_path / "out" / "pune" / "portal_listings.json").read_text())
     assert saved == output
+
+
+def test_normalize_housing_rent_listing_and_strip_contacts():
+    row = {
+        "id": "H-99",
+        "title": "2 BHK home in Wakad",
+        "society_name": "Riverfront Residency",
+        "locality": "Wakad",
+        "city": "Pune",
+        "purpose": "Rent",
+        "price": "₹ 28,000 / month",
+        "bhk": "2 BHK",
+        "area_sqft": 840,
+        "url": "https://housing.com/in/rent/example-property",
+        "owner_name": "Do not retain",
+        "phone": "9999999999",
+        "email": "owner@example.com",
+    }
+
+    item = normalize_row(row, "housing", "pune")
+
+    assert item["id"] == "housing:H-99"
+    assert item["operation"] == "rent"
+    assert item["price_inr"] == 28000
+    assert item["price_period"] == "month"
+    assert item["bhk"] == 2
+    assert item["area_sqft"] == 840
+    assert "owner_name" not in item and "phone" not in item and "email" not in item
+
+
+def test_import_city_feeds_includes_housing_source(tmp_path):
+    incoming = tmp_path / "incoming"
+    folder = incoming / "pune"
+    folder.mkdir(parents=True)
+    (folder / "housing.json").write_text(json.dumps({
+        "listings": [{
+            "id": "H-1",
+            "title": "A home",
+            "locality": "Baner",
+            "city": "Pune",
+            "operation": "rent",
+            "price": "₹ 25,000",
+            "url": "https://housing.com/in/rent/example",
+        }]
+    }))
+
+    output, stats = import_city_feeds("pune", incoming=incoming, output_root=tmp_path / "out")
+
+    assert len(output) == 1
+    assert output[0]["source"] == "housing"
+    assert stats["housing"]["accepted"] == 1
+    assert stats["housing"]["skipped"] == 0
