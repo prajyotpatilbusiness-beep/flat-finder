@@ -3,15 +3,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { authClient, authConfigured } from "./auth.js";
 import "./marketplace.css";
 
-let listings=[
-{id:"demo-pune-1",city:"Pune",locality:"Wakad",title:"Ganga Ashiyana Society",purpose:"rent",type:"Apartment",bhk:1,bath:1,area:550,price:18000,deposit:35000,furnishing:"Furnished",amenities:["Parking","Lift","Security","Power backup"],score:9.2,lat:18.5995,lng:73.7604,image:"https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=80",tag:"Owner",distance:"0.4 km from PCCOE"},
-{id:"demo-pune-2",city:"Pune",locality:"Hinjawadi Phase 1",title:"Park Titanium",purpose:"rent",type:"Apartment",bhk:2,bath:2,area:850,price:24000,deposit:50000,furnishing:"Semi-furnished",amenities:["Parking","Lift","Security","Gym"],score:8.8,lat:18.5914,lng:73.7387,image:"https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=900&q=80",tag:"Broker",distance:"8 min from office hubs"},
-{id:"demo-pune-3",city:"Pune",locality:"Karve Nagar",title:"Campus Stay PG",purpose:"rent",type:"PG / Co-living",bhk:1,bath:1,area:220,price:7500,deposit:10000,furnishing:"Furnished",amenities:["Security","Power backup"],score:9.4,lat:18.4935,lng:73.8215,image:"https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=900&q=80",tag:"PG",distance:"1.5 km from campus"},
-{id:"demo-mumbai-1",city:"Mumbai",locality:"Powai",title:"Lakeview Heights",purpose:"rent",type:"Apartment",bhk:2,bath:2,area:920,price:52000,deposit:150000,furnishing:"Furnished",amenities:["Parking","Lift","Security","Gym","Power backup"],score:9.1,lat:19.1176,lng:72.9060,image:"https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=900&q=80",tag:"Owner",distance:"Near Hiranandani"},
-{id:"demo-bengaluru-1",city:"Bengaluru",locality:"Whitefield",title:"Palm Grove Residences",purpose:"rent",type:"Apartment",bhk:2,bath:2,area:1050,price:36000,deposit:90000,furnishing:"Semi-furnished",amenities:["Parking","Lift","Security","Gym"],score:9.0,lat:12.9698,lng:77.7499,image:"https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=900&q=80",tag:"Demo",distance:"12 min to ITPL"},
-{id:"demo-delhi-1",city:"Delhi NCR",locality:"Noida Sector 137",title:"Metroview Apartments",purpose:"sale",type:"Apartment",bhk:3,bath:3,area:1450,price:11200000,deposit:0,furnishing:"Unfurnished",amenities:["Parking","Lift","Security","Power backup"],score:8.9,lat:28.5055,lng:77.3910,image:"https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=900&q=80",tag:"Demo sale",distance:"Near Noida Expressway"},
-{id:"demo-hyderabad-1",city:"Hyderabad",locality:"Gachibowli",title:"Cedar Park Homes",purpose:"sale",type:"Apartment",bhk:2,bath:2,area:1180,price:8900000,deposit:0,furnishing:"Semi-furnished",amenities:["Parking","Lift","Security","Gym","Power backup"],score:9.0,lat:17.4401,lng:78.3489,image:"https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80",tag:"Demo sale",distance:"Near Financial District"},
-{id:"demo-chennai-1",city:"Chennai",locality:"OMR",title:"Palm Court",purpose:"rent",type:"Apartment",bhk:3,bath:3,area:1400,price:42000,deposit:120000,furnishing:"Furnished",amenities:["Parking","Lift","Security","Pool"],score:8.7,lat:12.9352,lng:80.2300,image:"https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=900&q=80",tag:"Demo",distance:"Near Tidel Park"}];
+let listings=[];
 listings=listings.map(item=>({...item,source:item.source||"demo"}));
 
 const state={
@@ -23,7 +15,7 @@ const state={
 const money=n=>n>=10000000?"₹"+(n/10000000).toFixed(2)+" Cr":n>=100000?"₹"+(n/100000).toFixed(1)+" L":"₹"+Math.round(n).toLocaleString("en-IN");
 const q=s=>document.querySelector(s);
 const qa=s=>[...document.querySelectorAll(s)];
-const searchAnchors={
+let searchAnchors={
  campus:[
   {id:"pccoe",name:"PCCOE College of Engineering",city:"Pune",lat:18.6466,lng:73.7603},
   {id:"dypatil",name:"Dr. D. Y. Patil Institute",city:"Pune",lat:18.6480,lng:73.7612},
@@ -49,6 +41,32 @@ const searchAnchors={
   {id:"omr",name:"OMR IT Corridor",city:"Chennai",lat:12.9582,lng:80.2455}
  ]
 };
+async function loadPuneSearchPlaces(){
+  try{
+    const response=await fetch("/data/pune-search-places.json",{cache:"no-cache"});
+    if(!response.ok)throw new Error("Pune place catalogue is not published yet.");
+    const directory=await response.json();
+    const mergePlaces=(existing,places)=> {
+      const merged=[...existing];
+      for(const place of (places||[])){
+        const candidate={id:place.id,name:place.name,city:"Pune",lat:Number(place.lat),lng:Number(place.lng),kind:place.kind||"place",address:place.address||"",source:place.source||"OpenStreetMap"};
+        if(!candidate.name||!Number.isFinite(candidate.lat)||!Number.isFinite(candidate.lng))continue;
+        const duplicate=merged.some(item=>item.city==="Pune"&&(
+          String(item.name).trim().toLowerCase()===candidate.name.trim().toLowerCase()
+          ||distanceKm(item.lat,item.lng,candidate.lat,candidate.lng)<0.18
+        ));
+        if(!duplicate)merged.push(candidate);
+      }
+      return merged;
+    };
+    searchAnchors.campus=mergePlaces(searchAnchors.campus,directory.campuses);
+    searchAnchors.office=mergePlaces(searchAnchors.office,directory.offices);
+    updateModeControls();
+    updateAnchorMap();
+    render();
+    if(q("#modeSummary"))q("#modeSummary").textContent="Pune directory loaded: "+(directory.campuses||[]).length+" mapped colleges/universities and "+(directory.offices||[]).length+" office hubs. Select a place to see its radius.";
+  }catch(error){console.info("Pune place catalogue unavailable:",error?.message||error);}
+}
 function activeAnchor(){
  if(state.anchorId==="all")return null;
  return (searchAnchors[state.mode]||[]).find(item=>item.id===state.anchorId)||null;
@@ -82,9 +100,9 @@ function setActiveTab(tab){
 }
 const typeList=["all","Apartment","Independent House","Villa","Studio","PG / Co-living"];
 const bhkList=["all","1","2","3","4+"];
-const portalLabels={"99acres":"99acres",nobroker:"NoBroker",housing:"Housing.com",flatfinder:"Flat Finder",demo:"Sample"};
+const portalLabels={"99acres":"99acres",nobroker:"NoBroker",housing:"Housing.com",magicbricks:"Magicbricks",flatfinder:"Flat Finder"};
 const cityNames={gurgaon:"Gurugram",bangalore:"Bengaluru",mumbai:"Mumbai",pune:"Pune"};
-const portalHosts={"99acres":["99acres.com","www.99acres.com"],nobroker:["nobroker.in","www.nobroker.in"],housing:["housing.com","www.housing.com"]};
+const portalHosts={"99acres":["99acres.com","www.99acres.com"],nobroker:["nobroker.in","www.nobroker.in"],housing:["housing.com","www.housing.com"],magicbricks:["magicbricks.com","www.magicbricks.com"]};
 
 function safePortalUrl(value,source){
   try{
@@ -420,7 +438,7 @@ function loadPortalListings(){
       return records.map(item=>{
         const source=item.source;
         const sourceUrl=safePortalUrl(item.url,source);
-        if(!sourceUrl||!["99acres","nobroker","housing"].includes(source))return null;
+        if(!sourceUrl||!["99acres","nobroker","housing","magicbricks"].includes(source))return null;
         const price=Number(item.price_inr)||0;
         if(!price)return null;
         return {
@@ -450,7 +468,7 @@ function loadPortalListings(){
     }catch{return [];}
   })).then(groups=>{
     const imported=groups.flat();
-    listings=[...listings.filter(l=>!["99acres","nobroker","housing"].includes(l.source)),...imported];
+    listings=[...listings.filter(l=>!["99acres","nobroker","housing","magicbricks"].includes(l.source)),...imported];
     render();
   });
 }
@@ -721,3 +739,4 @@ async function loadResearchCityCount(){
 loadApprovedListings();
 loadPortalListings();
 loadResearchCityCount();
+loadPuneSearchPlaces();
