@@ -11,40 +11,92 @@
 <header class="topbar"><a class="brand" href="/" aria-label="Flat Finder home"><span class="logo">⌂</span><span><b>Flat Finder</b><small>Find home. Live better.</small></span></a>
 <nav><a class="active" href="#explore">Explore</a><a href="#saved">Saved <i id="savedCount">0</i></a><a href="/#plans" target="_top">Plans</a><a href="/">Society Research</a></nav>
 <div class="actions"><button class="ghost" id="loginBtn">Sign in</button><button class="primary" id="listBtn">+ List property</button></div><button class="menu" id="menuBtn">☰</button></header>
-<main id="explore"><section class="hero"><div><span class="eyebrow">HOMES ACROSS INDIA</span><h1>Find a place that <em>feels like home.</em></h1><p>Compare rentals and homes for sale by location, budget, BHK and the details that matter.</p></div><div class="trust"><b>India-wide discovery</b><span>Source-labelled listings • Map clusters • Society research</span></div></section>
-<section class="searchbox"><div class="field location"><label>LOCATION</label><input id="location" placeholder="City, locality or PIN code" autocomplete="off"><div id="suggestions" class="suggestions"></div></div>
-<div class="field"><label>LOOKING TO</label><div class="seg"><button class="on" data-purpose="rent">Rent</button><button data-purpose="sale">Buy</button></div></div>
-<div class="field"><label>CITY</label><select id="city"><option value="all">All India</option><option>Pune</option><option>Mumbai</option><option>Bengaluru</option><option>Delhi NCR</option><option>Hyderabad</option><option>Chennai</option><option>Gurugram</option><option>Noida</option><option>Kolkata</option></select></div>
-<div class="field"><label>LISTING SOURCE</label><select id="source"><option value="all">All sources</option><option value="flatfinder">Flat Finder members</option><option value="99acres">99acres</option><option value="nobroker">NoBroker</option><option value="housing">Housing.com</option></select></div>
-<button class="primary searchbtn" id="searchBtn">⌕ Search homes</button></section>
+<main id="explore">
+<section class="app-home">
+  <div class="app-welcome">
+    <span class="eyebrow">FLAT FINDER · INDIA</span>
+    <h1>Find a home near <em>what matters.</em></h1>
+    <p>Explore verified homes around your campus or workplace.</p>
+  </div>
+  <div class="mode-switch" role="tablist" aria-label="Search mode">
+    <button type="button" class="mode-option active" id="campusMode" data-mode="campus" role="tab" aria-selected="true"><span>🎓</span> Campus</button>
+    <button type="button" class="mode-option" id="officeMode" data-mode="office" role="tab" aria-selected="false"><span>▣</span> Office</button>
+  </div>
+  <div class="anchor-picker">
+    <div class="anchor-picker-copy"><span class="eyebrow" id="anchorEyebrow">CAMPUS SEARCH</span><label id="anchorLabel" for="anchorSelect">Choose your college</label></div>
+    <select id="anchorSelect" aria-label="Choose campus or office"></select>
+    <span class="anchor-current-pill" id="anchorCity">Pune</span>
+  </div>
+  <div class="search-controls">
+    <div class="radius-control">
+      <div class="section-label"><span id="radiusTitle">Search radius</span><span id="radiusValue">5 KM</span></div>
+      <div class="radius-pills" id="radiusPills" role="group" aria-label="Search radius">
+        <button type="button" data-radius="1">1 KM</button>
+        <button type="button" data-radius="3">3 KM</button>
+        <button type="button" class="active" data-radius="5">5 KM</button>
+        <button type="button" data-radius="10">10 KM</button>
+        <button type="button" data-radius="25">25 KM</button>
+      </div>
+    </div>
+    <div class="purpose-row">
+      <span class="section-label">I am looking to</span>
+      <div class="seg"><button class="on" data-purpose="rent">Rent</button><button data-purpose="sale">Buy</button></div>
+    </div>
+  </div>
+  <div class="quick-filter-row">
+    <button type="button" class="quick-category active" data-category="all"><span>✦</span>All</button>
+    <button type="button" class="quick-category" data-category="flats"><span>▦</span>Flats</button>
+    <button type="button" class="quick-category" data-category="pg"><span>▣</span>PG</button>
+    <button type="button" class="quick-category" data-category="hostel"><span>⌂</span>Hostel</button>
+    <button type="button" class="quick-category" data-category="owner"><span>✓</span>Owner</button>
+    <button type="button" class="quick-category filter-launch" id="openFilters"><span>☷</span>Filters</button>
+  </div>
+  <div class="mode-note" id="modeSummary">Student-friendly stays and flats around colleges and universities.</div>
+  <div class="search-extra">
+    <label for="location">Search a locality or PIN code</label>
+    <input id="location" placeholder="e.g. Wakad, Baner or 411057" autocomplete="off">
+    <select id="city" aria-label="City">
+      <option value="all">All India</option><option>Pune</option><option>Mumbai</option><option>Bengaluru</option><option>Delhi NCR</option><option>Hyderabad</option><option>Chennai</option><option>Gurugram</option><option>Noida</option><option>Kolkata</option>
+    </select>
+    <select id="source" aria-label="Listing source"><option value="all">All sources</option><option value="flatfinder">Flat Finder members</option><option value="99acres">99acres</option><option value="nobroker">NoBroker</option><option value="housing">Housing.com</option></select>
+    <button type="button" id="searchBtn">Search</button>
+  </div>
+</section>
 <section class="nearby-search" aria-label="Premium GPS property search">
   <div class="nearby-copy">
     <span class="pro-feature-label">PRO FEATURE</span>
-    <h2>Find homes around your current location</h2>
-    <p>See available properties inside your chosen radius. Your existing filters still apply. Location is requested only when you start the search.</p>
+    <h2>Search around your current location</h2>
+    <p>Unlock GPS radius search up to 25 km. Your location is requested only when you start.</p>
   </div>
   <div class="nearby-controls">
-    <label for="nearbyRadius">Radius
-      <select id="nearbyRadius">
-        <option value="1">1 km</option><option value="3">3 km</option><option value="5" selected>5 km</option><option value="10">10 km</option><option value="25">25 km</option>
-      </select>
+    <label for="nearbyRadius">GPS radius
+      <select id="nearbyRadius"><option value="1">1 km</option><option value="3">3 km</option><option value="5" selected>5 km</option><option value="10">10 km</option><option value="25">25 km</option></select>
     </label>
-    <button type="button" class="primary" id="nearbyButton">Find homes near me</button>
-    <button type="button" class="ghost" id="clearNearby" hidden>Clear radius</button>
+    <button type="button" class="primary" id="nearbyButton">Use my location</button>
+    <button type="button" class="ghost" id="clearNearby" hidden>Clear</button>
   </div>
-  <p class="nearby-status" id="nearbyStatus" role="status" aria-live="polite">Exclusive to the Pro plan. Upgrade to Pro to unlock GPS radius search. Your location is never continuously tracked.</p>
+  <p class="nearby-status" id="nearbyStatus" role="status" aria-live="polite">Available with Pro membership. No continuous location tracking.</p>
 </section>
 <section class="market-stats" aria-label="Marketplace coverage"><article><span>PORTAL FEEDS</span><b id="portalSourceCount">3</b><small>Sources supported</small></article><article><span>PORTAL LISTINGS</span><b id="portalListingCount">0</b><small>From authorised feeds</small></article><article><span>MEMBER LISTINGS</span><b id="approvedListingCount">0</b><small>Approved on Flat Finder</small></article><article><span>RESEARCH CITIES</span><b id="researchCityCount">2</b><small>Society map datasets</small></article></section>
 <div class="demo" id="sourceNotice"><b>Source transparency:</b> sample homes are fictional. Portal listings appear only from authorised 99acres, NoBroker and Housing.com feeds, with a link back to the original listing.</div>
 <div class="data-status" id="dataStatus" role="status" aria-live="polite">Loading the available listings…</div>
-<section class="content"><aside class="filters"><div class="filterhead"><div><span class="eyebrow">REFINE</span><h2>Filters</h2></div><button id="reset">Reset</button></div>
+<section class="content"><aside class="filters" id="filtersPanel"><div class="filterhead"><div><span class="eyebrow">REFINE YOUR SEARCH</span><h2>Filters</h2></div><div class="filter-head-actions"><button id="reset">Reset</button><button type="button" class="filter-close" id="closeFilters" aria-label="Close filters">×</button></div></div>
+<div class="filter-purpose"><span>Search mode</span><div class="seg"><button class="on" data-purpose="rent">Rent</button><button data-purpose="sale">Buy</button></div></div>
+<label>Property type</label><div class="chips" id="types"></div><label>BHK</label><div class="chips" id="bhks"></div>
 <label>Property type</label><div class="chips" id="types"></div><label>BHK</label><div class="chips" id="bhks"></div>
 <label>Maximum <span id="budgetLabel">monthly rent</span><b id="budgetValue">₹50,000</b></label><input id="budget" type="range" min="5000" max="100000" step="2500" value="50000"><div class="range"><span>₹5k</span><span>₹1L+</span></div>
 <label>Furnishing</label><div class="checks" id="furnishing"><label><input type="checkbox" value="Furnished"> Furnished</label><label><input type="checkbox" value="Semi-furnished"> Semi-furnished</label><label><input type="checkbox" value="Unfurnished"> Unfurnished</label></div>
 <label>Amenities</label><div class="checks" id="amenities"><label><input type="checkbox" value="Parking"> Parking</label><label><input type="checkbox" value="Lift"> Lift</label><label><input type="checkbox" value="Security"> Security</label><label><input type="checkbox" value="Gym"> Gym</label><label><input type="checkbox" value="Power backup"> Power backup</label></div>
 <button class="primary wide" id="apply">Show properties</button></aside>
-<section class="results"><div class="resultbar"><div><span class="eyebrow">EXPLORE HOMES</span><h2><span id="count">0</span> homes to explore</h2><p id="context">Across India · Rent</p></div><div class="sort"><button id="gridBtn" class="view on">▦</button><button id="mapBtn" class="view">⌖</button><select id="sort"><option value="recommended">Recommended</option><option value="priceAsc">Price: low to high</option><option value="priceDesc">Price: high to low</option><option value="area">Largest area</option></select></div></div>
-<div class="workspace"><div id="cards" class="cards"></div><div id="map" class="map"></div></div></section></section></main>
+<section class="results"><div class="resultbar"><div><span class="eyebrow" id="resultsEyebrow">CAMPUS PICKS</span><h2><span id="topNearbyTitle">Top homes near PCCOE</span></h2><p><span id="count">0</span> matches · <span id="context">Pune · Rent</span></p></div><div class="sort"><button id="gridBtn" class="view on" aria-label="Grid view">▦</button><button id="mapBtn" class="view" aria-label="Map view">⌖</button><select id="sort" aria-label="Sort properties"><option value="recommended">Recommended</option><option value="priceAsc">Price: low to high</option><option value="priceDesc">Price: high to low</option><option value="area">Largest area</option></select></div></div>
+<div class="workspace"><div id="map" class="map"></div><div class="properties-preview"><div class="properties-preview-head"><div><b id="propertySectionTitle">Best picks near PCCOE</b><small>Sample and approved homes matching your search</small></div><button type="button" id="seeAllHomes">See all</button></div><div id="cards" class="cards"></div></div></div></section></section></main>
+<nav class="mobile-bottom-nav" aria-label="Main navigation">
+ <button type="button" class="active" data-mobile-tab="home"><span>⌂</span><small>Home</small></button>
+ <button type="button" data-mobile-tab="radar"><span>◎</span><small>Radar</small></button>
+ <button type="button" data-mobile-tab="saved"><span>♡</span><small>Saved</small><i id="mobileSavedCount">0</i></button>
+ <button type="button" data-mobile-tab="messages"><span>▤</span><small>Messages</small></button>
+ <button type="button" data-mobile-tab="profile"><span>♙</span><small>Profile</small></button>
+</nav>
 <footer><span>© Flat Finder</span><span>Built for India • <a href="/">Map & society research</a></span></footer></div>
 <div id="modal" class="modal" hidden><div class="modal-card"><button class="close" id="closeModal">×</button><div id="modalBody"></div></div></div>
 <script>if(new URLSearchParams(location.search).get("embed")==="1")document.body.classList.add("embedded");</script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script type="module" src="/src/marketplace.js"></script></body></html>
