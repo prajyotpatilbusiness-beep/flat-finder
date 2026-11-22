@@ -17,7 +17,7 @@ listings=listings.map(item=>({...item,source:item.source||"demo"}));
 const state={
   purpose:"rent",city:"Pune",location:"",type:"all",bhk:"all",
   budget:null,sort:"recommended",source:"all",nearby:null,
-  mode:"campus",anchorId:"pccoe",radiusKm:10,category:"all",activeTab:"home",
+  mode:"campus",anchorId:"pccoe",radiusKm:5,category:"all",activeTab:"home",
   saved:new Set(JSON.parse(localStorage.getItem("ff-saved")||"[]"))
 };
 const money=n=>n>=10000000?"₹"+(n/10000000).toFixed(2)+" Cr":n>=100000?"₹"+(n/100000).toFixed(1)+" L":"₹"+Math.round(n).toLocaleString("en-IN");
@@ -49,14 +49,17 @@ const searchAnchors={
   {id:"omr",name:"OMR IT Corridor",city:"Chennai",lat:12.9582,lng:80.2455}
  ]
 };
-function activeAnchor(){return (searchAnchors[state.mode]||[]).find(item=>item.id===state.anchorId)||null;}
+function activeAnchor(){
+ if(state.anchorId==="all")return null;
+ return (searchAnchors[state.mode]||[]).find(item=>item.id===state.anchorId)||null;
+}
 function updateModeControls(){
  const anchors=searchAnchors[state.mode]||[];
- if(!anchors.some(item=>item.id===state.anchorId))state.anchorId=anchors[0]?.id||"";
+ if(state.anchorId!=="all"&&!anchors.some(item=>item.id===state.anchorId))state.anchorId=anchors[0]?.id||"all";
  const select=q("#anchorSelect");
- select.innerHTML=anchors.map(item=>"<option value=\\""+authEscape(item.id)+"\\">"+authEscape(item.name)+" · "+authEscape(item.city)+"</option>").join("");
+ select.innerHTML="<option value=\\"all\\">"+(state.city==="all"?"All India":"Citywide · "+authEscape(state.city))+"</option>"+anchors.map(item=>"<option value=\\""+authEscape(item.id)+"\\">"+authEscape(item.name)+" · "+authEscape(item.city)+"</option>").join("");
  select.value=state.anchorId;
- const anchor=activeAnchor();state.city=anchor?.city||"all";q("#city").value=state.city;
+ const anchor=activeAnchor();if(anchor)state.city=anchor.city;q("#city").value=state.city;
  q("#anchorEyebrow").textContent=state.mode==="campus"?"CAMPUS SEARCH":"OFFICE SEARCH";
  q("#anchorLabel").textContent=state.mode==="campus"?"Choose your college":"Choose your workplace";
  q("#anchorCity").textContent=anchor?.city||"All India";
@@ -249,7 +252,12 @@ function updateAnchorMap(){
   const anchor=activeAnchor(),source=map.getSource("anchor-radius"),origin=map.getSource("anchor-origin");
   map.getSource("nearby-radius")?.setData({type:"FeatureCollection",features:[]});
   map.getSource("nearby-origin")?.setData({type:"FeatureCollection",features:[]});
-  if(!anchor){source?.setData({type:"FeatureCollection",features:[]});origin?.setData({type:"FeatureCollection",features:[]});return;}
+  if(!anchor){
+    source?.setData({type:"FeatureCollection",features:[]});
+    origin?.setData({type:"FeatureCollection",features:[]});
+    map.easeTo({center:[78.9629,22.5937],zoom:4.5,duration:420});
+    return;
+  }
   source?.setData({type:"FeatureCollection",features:[radiusFeature(anchor.lat,anchor.lng,state.radiusKm)]});
   origin?.setData({type:"FeatureCollection",features:[{type:"Feature",properties:{},geometry:{type:"Point",coordinates:[anchor.lng,anchor.lat]}}]});
   map.easeTo({center:[anchor.lng,anchor.lat],zoom:state.radiusKm<=1?14:state.radiusKm<=3?13:state.radiusKm<=5?12.3:state.radiusKm<=10?11.3:10.4,duration:420});
@@ -265,6 +273,7 @@ function showNearbyRadius(){
 }
 function clearNearbySearch(){
   state.nearby=null;
+  updateModeControls();
   const source=map?.getSource("nearby-radius");
   if(source)source.setData({type:"FeatureCollection",features:[]});
   const origin=map?.getSource("nearby-origin");
@@ -321,6 +330,8 @@ async function startNearbySearch(){
     const merged=new Map(listings.map(item=>[String(item.id),item]));
     for(const item of live)merged.set(String(item.id),item);
     listings=[...merged.values()];
+    state.city="all";
+    q("#city").value="all";
     state.nearby={lat,lng,radiusKm};
     render();
     showNearbyRadius();
@@ -494,7 +505,12 @@ qa(".seg button").forEach(b=>b.onclick=()=>{
   q("#budget").value=state.purpose==="rent"?50000:15000000;
   render();
 });
-q("#city").onchange=e=>{state.city=e.target.value;render()};
+q("#city").onchange=e=>{
+  state.city=e.target.value;
+  const matchingAnchor=(searchAnchors[state.mode]||[]).find(item=>item.city===state.city);
+  state.anchorId=state.city==="all"||!matchingAnchor?"all":matchingAnchor.id;
+  updateModeControls();render();
+};
 q("#source").onchange=e=>{state.source=e.target.value;render()};
 q("#location").oninput=e=>{state.location=e.target.value.trim();render()};
 q("#budget").oninput=e=>{state.budget=Number(e.target.value);render()};
@@ -513,7 +529,7 @@ q("#sort").onchange=e=>{state.sort=e.target.value;render()};
 q("#searchBtn").onclick=()=>{state.location=q("#location").value.trim();render()};
 q("#reset").onclick=()=>{
   state.location="";state.type="all";state.bhk="all";state.source="all";state.category="all";state.activeTab="home";
-  state.budget=null;state.nearby=null;state.radiusKm=10;
+  state.budget=null;state.nearby=null;state.radiusKm=5;
   qa("[data-mobile-tab]").forEach(button=>button.classList.toggle("active",button.dataset.mobileTab==="home"));
   for(const id of ["nearby-radius","nearby-origin"])map?.getSource(id)?.setData({type:"FeatureCollection",features:[]});
   qa("[data-category]").forEach(button=>button.classList.toggle("active",button.dataset.category==="all"));
@@ -681,7 +697,8 @@ async function loadApprovedListings(){
       id:item.id,source:"flatfinder",city:item.city,locality:item.locality||item.city,title:item.title,purpose:item.purpose,
       type:propertyType(item.property_type),bhk:Number(item.bedrooms)||null,bath:Number(item.bathrooms)||0,area:Number(item.area_sqft||0),
       price:item.purpose==="rent"?Number(item.rent_inr||0):Number(item.sale_price_inr||0),
-      deposit:0,furnishing:item.furnishing||"",amenities:item.amenities||[],score:0,lat:null,lng:null,image:"",
+      deposit:Number(item.deposit_inr||0),furnishing:item.furnishing||"",amenities:item.amenities||[],score:0,
+      lat:item.lat==null?null:Number(item.lat),lng:item.lng==null?null:Number(item.lng),image:"",
       tag:item.verification_status==="verified"?"Verified owner listing":"Approved member listing",distance:"",featured:Boolean(item.is_featured)
     }));
     const merged=new Map(listings.map(item=>[String(item.id),item]));
