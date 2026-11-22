@@ -203,7 +203,7 @@ function render(){
   q("#cards").innerHTML=rows.length?rows.map(card).join(""):"<div class=\\"empty\\"><div>⌂</div><h3>"+(state.activeTab==="saved"?"No saved homes yet.":"No homes found in this radius.")+"</h3><p>"+(state.activeTab==="saved"?"Tap the heart on a property to keep it here.":"Try a wider radius or another nearby campus or office. Live listings will appear here when available.")+"</p><button class=\\"primary\\" id=\\"emptyReset\\">"+(state.activeTab==="saved"?"Explore homes":"Change search")+"</button></div>";
   qa("[data-save]").forEach(b=>b.onclick=()=>toggleSave(b.dataset.save));
   qa("[data-detail]").forEach(b=>b.onclick=()=>openDetail(b.dataset.detail));
-  const empty=q("#emptyReset");if(empty)empty.onclick=q("#reset").onclick;
+  const empty=q("#emptyReset");if(empty)empty.onclick=()=>state.activeTab==="saved"?setActiveTab("home"):q("#reset").click();
   updateDashboardStats();
   updateMap(rows);
   updateAnchorMap();
@@ -247,6 +247,8 @@ function radiusFeature(lat,lng,radiusKm){
 function updateAnchorMap(){
   if(!map||state.nearby)return;
   const anchor=activeAnchor(),source=map.getSource("anchor-radius"),origin=map.getSource("anchor-origin");
+  map.getSource("nearby-radius")?.setData({type:"FeatureCollection",features:[]});
+  map.getSource("nearby-origin")?.setData({type:"FeatureCollection",features:[]});
   if(!anchor){source?.setData({type:"FeatureCollection",features:[]});origin?.setData({type:"FeatureCollection",features:[]});return;}
   source?.setData({type:"FeatureCollection",features:[radiusFeature(anchor.lat,anchor.lng,state.radiusKm)]});
   origin?.setData({type:"FeatureCollection",features:[{type:"Feature",properties:{},geometry:{type:"Point",coordinates:[anchor.lng,anchor.lat]}}]});
@@ -505,14 +507,14 @@ qa("[data-category]").forEach(button=>button.onclick=()=>{state.category=button.
 q("#openFilters").onclick=()=>q("#filtersPanel").classList.add("mobile-open");
 q("#closeFilters").onclick=()=>q("#filtersPanel").classList.remove("mobile-open");
 q("#apply").onclick=()=>{render();q("#filtersPanel").classList.remove("mobile-open");};
-q("#seeAllHomes").onclick=()=>{state.activeTab="home";render();};
+q("#seeAllHomes").onclick=()=>setActiveTab("home");
 qa("[data-mobile-tab]").forEach(button=>button.onclick=()=>setActiveTab(button.dataset.mobileTab));
 q("#sort").onchange=e=>{state.sort=e.target.value;render()};
 q("#searchBtn").onclick=()=>{state.location=q("#location").value.trim();render()};
-q("#apply").onclick=render;
 q("#reset").onclick=()=>{
-  state.location="";state.type="all";state.bhk="all";state.source="all";state.category="all";
+  state.location="";state.type="all";state.bhk="all";state.source="all";state.category="all";state.activeTab="home";
   state.budget=null;state.nearby=null;state.radiusKm=10;
+  qa("[data-mobile-tab]").forEach(button=>button.classList.toggle("active",button.dataset.mobileTab==="home"));
   for(const id of ["nearby-radius","nearby-origin"])map?.getSource(id)?.setData({type:"FeatureCollection",features:[]});
   qa("[data-category]").forEach(button=>button.classList.toggle("active",button.dataset.category==="all"));
   q("#nearbyStatus").textContent="Pro-only GPS search is off. Campus/office radius search remains available.";
