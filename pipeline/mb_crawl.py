@@ -117,6 +117,50 @@ def merge_project_parts(index, parts):
     return [by_id[project_id] for project_id in expected]
 
 
+
+def merge_partial_project_parts(index, parts):
+    """Merge available batches in index order and report every uncovered range."""
+    if not parts:
+        raise ValueError("No project batch files were found.")
+
+    ordered = sorted(parts, key=lambda item: item[0])
+    merged = []
+    covered = []
+    missing = []
+    cursor = 0
+
+    for start, end, rows in ordered:
+        if start < 0 or end <= start or end > len(index):
+            raise ValueError(f"Invalid batch range {start}:{end} for {len(index)} indexed projects.")
+        if start < cursor:
+            raise ValueError(f"Overlapping project batch at {start}:{end}.")
+        if start > cursor:
+            missing.append({"start": cursor, "end": start})
+
+        expected = [project["mb_id"] for project in index[start:end]]
+        actual = [project.get("mb_id") for project in rows]
+        if len(rows) != end - start or actual != expected:
+            raise ValueError(
+                f"Batch {start}:{end} does not match its index slice "
+                f"({len(rows)} rows; expected {end - start} in exact order)."
+            )
+
+        merged.extend(rows)
+        covered.append({"start": start, "end": end, "count": len(rows)})
+        cursor = end
+
+    if cursor < len(index):
+        missing.append({"start": cursor, "end": len(index)})
+
+    coverage = {
+        "expected": len(index),
+        "collected": len(merged),
+        "complete": len(merged) == len(index),
+        "covered_ranges": covered,
+        "missing_ranges": missing,
+    }
+    return merged, coverage
+
 def crawl_projects(start=0, end=None, output_path=None):
     index = json.loads((OUT / "mb_index.json").read_text(encoding="utf-8"))
     end = len(index) if end is None else end
@@ -165,6 +209,29 @@ def merge_projects():
     print(f"merged {len(merged)} projects from {len(part_files)} batches", flush=True)
 
 
+def merge_partial_projects():
+    index = json.loads((OUT / "mb_index.json").read_text(encoding="utf-8"))
+    part_files = list(OUT.glob("mb_projects_part_*.json"))
+    parts = []
+    for path in part_files:
+        stem = path.stem.removeprefix("mb_projects_part_")
+        try:
+            start, end = (int(value) for value in stem.split("_", 1))
+        except (TypeError, ValueError):
+            raise ValueError(f"Invalid project batch filename: {path.name}")
+        rows = json.loads(path.read_text(encoding="utf-8"))
+        parts.append((start, end, rows))
+
+    merged, coverage = merge_partial_project_parts(index, parts)
+    write_json(OUT / "mb_projects.json", merged)
+    write_json(OUT / "mb_coverage.json", coverage)
+    print(
+        f"merged {coverage['collected']:,}/{coverage['expected']:,} projects "
+        f"from {len(parts)} batches; missing ranges: {coverage['missing_ranges']}",
+        flush=True,
+    )
+
+
 if __name__ == "__main__":
     command = sys.argv[1]
     if command == "list":
@@ -177,5 +244,7 @@ if __name__ == "__main__":
         crawl_projects(int(sys.argv[3]), int(sys.argv[4]))
     elif command == "merge":
         merge_projects()
+    elif command == "merge-partial":
+        merge_partial_projects()
     else:
         raise SystemExit(f"Unknown command: {command}")
