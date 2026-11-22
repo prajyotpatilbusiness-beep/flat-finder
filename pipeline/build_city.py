@@ -314,6 +314,8 @@ def main(city="gurgaon"):
     cfg = json.loads((ROOT.parent / "data" / "cities.json").read_text())[city]
     out = OUT / city
     raw = json.loads((out / "mb_projects.json").read_text())
+    coverage_path = out / "mb_coverage.json"
+    collection = json.loads(coverage_path.read_text(encoding="utf-8")) if coverage_path.exists() else None
     located = [p for p in raw if inside_city_bbox(p, cfg["bbox"])]
     not_located = len(raw) - len(located)
     projects = dedupe(located)
@@ -530,6 +532,7 @@ def main(city="gurgaon"):
 
     WEB.mkdir(parents=True, exist_ok=True)
     doc = {"city": {"id": city, "name": cfg["name"], "center": cfg["center"], "zoom": cfg["zoom"]},
+            "collection": collection,
             "price_model": model,
             "room_model": room_model,
             "counts": {"listed": len(raw), "on_map": len(societies), "not_located": not_located,
