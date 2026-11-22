@@ -2,29 +2,24 @@ name: Build city research data
 
 on:
   workflow_dispatch:
-    inputs:
-      city:
-        description: City to collect and publish
-        required: true
-        type: choice
-        options:
-          - bangalore
-          - mumbai
-          - pune
+  push:
+    branches: [main]
+    paths:
+      - ".github/trigger-bangalore-launch.txt"
 
 permissions:
   contents: write
   actions: read
 
 concurrency:
-  group: city-data-${{ inputs.city }}
+  group: bangalore-resume-${{ github.run_id }}
   cancel-in-progress: false
 
 jobs:
   prepare:
-    name: Collect city index
+    name: Restore saved batches and plan remaining work
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 30
     outputs:
       project_matrix: ${{ steps.matrix.outputs.project_matrix }}
     steps:
@@ -32,41 +27,42 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Collect all project links
-        env:
-          CITY: ${{ inputs.city }}
-        run: python pipeline/mb_crawl.py list "$CITY"
-      - name: Create sequential project batches
+      - name: Restore the original index and completed batches
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 44945612463
+          pattern: bangalore-*
+          path: pipeline/out/bangalore
+          merge-multiple: true
+      - name: Build a matrix from missing batches only
         id: matrix
-        env:
-          CITY: ${{ inputs.city }}
         run: |
           python - <<'PY'
           import json
           import os
           from pathlib import Path
 
-          city = os.environ["CITY"]
-          index_path = Path("pipeline/out") / city / "mb_index.json"
-          count = len(json.loads(index_path.read_text()))
+          folder = Path("pipeline/out/bangalore")
+          index_path = folder / "mb_index.json"
+          if not index_path.is_file():
+              raise SystemExit("Saved Bengaluru index artifact is missing.")
+          count = len(json.loads(index_path.read_text(encoding="utf-8")))
           chunk_size = 5000
-          include = [
-              {"start": start, "end": min(start + chunk_size, count)}
-              for start in range(0, count, chunk_size)
-          ]
+          include = []
+          for start in range(0, count, chunk_size):
+              end = min(start + chunk_size, count)
+              part = folder / f"mb_projects_part_{start}_{end}.json"
+              if not part.is_file():
+                  include.append({"start": start, "end": end})
           if not include:
-              raise SystemExit("The city index is empty; refusing to start detail collection.")
+              raise SystemExit("No missing project batches; the saved batches are already complete.")
           matrix = json.dumps({"include": include}, separators=(",", ":"))
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write("project_matrix=" + matrix + "\n")
-          print(f"Prepared {count:,} projects in {len(include)} batches of up to {chunk_size:,}.")
+          print(f"Restored {count:,} indexed projects; {len(include)} batches remain: {include}")
           PY
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ inputs.city }}-index
-          path: pipeline/out/${{ inputs.city }}/mb_index.json
-          if-no-files-found: error
-          retention-days: 7
 
   projects:
     name: Project details ${{ matrix.start }}-${{ matrix.end }}
@@ -82,25 +78,28 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - uses: actions/download-artifact@v4
+      - name: Restore the original Bengaluru index
+        uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.city }}-index
-          path: pipeline/out/${{ inputs.city }}
-      - name: Collect this project batch
+          name: bangalore-index
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 44945612463
+          path: pipeline/out/bangalore
+      - name: Collect this missing project batch
         env:
-          CITY: ${{ inputs.city }}
           START: ${{ matrix.start }}
           END: ${{ matrix.end }}
-        run: python pipeline/mb_crawl.py projects-range "$CITY" "$START" "$END"
+        run: python pipeline/mb_crawl.py projects-range bangalore "$START" "$END"
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.city }}-projects-${{ matrix.start }}-${{ matrix.end }}
-          path: pipeline/out/${{ inputs.city }}/mb_projects_part_${{ matrix.start }}_${{ matrix.end }}.json
+          name: resume-bangalore-projects-${{ matrix.start }}-${{ matrix.end }}
+          path: pipeline/out/bangalore/mb_projects_part_${{ matrix.start }}_${{ matrix.end }}.json
           if-no-files-found: error
           retention-days: 7
 
   publish:
-    name: Build, validate and publish city
+    name: Merge, validate and publish Bengaluru
     needs: [prepare, projects]
     runs-on: ubuntu-latest
     timeout-minutes: 360
@@ -111,65 +110,62 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - uses: actions/download-artifact@v4
+      - name: Restore original index and completed batches
+        uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.city }}-index
-          path: pipeline/out/${{ inputs.city }}
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: ${{ inputs.city }}-projects-*
-          path: pipeline/out/${{ inputs.city }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 44945612463
+          pattern: bangalore-*
+          path: pipeline/out/bangalore
           merge-multiple: true
-      - name: Import authorized 99acres and NoBroker feeds
-        env:
-          CITY: ${{ inputs.city }}
-        run: python pipeline/portal_import.py "$CITY"
-      - name: Merge all project batches
-        env:
-          CITY: ${{ inputs.city }}
-        run: python pipeline/mb_crawl.py merge "$CITY"
-      - name: Collect map context and build city dataset
-        env:
-          CITY: ${{ inputs.city }}
+      - name: Download newly completed batches
+        uses: actions/download-artifact@v4
+        with:
+          pattern: resume-bangalore-projects-*
+          path: pipeline/out/bangalore
+          merge-multiple: true
+      - name: Import any authorized 99acres and NoBroker feeds
+        run: python pipeline/portal_import.py bangalore
+      - name: Merge all Bengaluru project batches
+        run: python pipeline/mb_crawl.py merge bangalore
+      - name: Collect map context and build Bengaluru dataset
         run: |
-          python pipeline/osm_fetch.py "$CITY"
-          python pipeline/build_city.py "$CITY"
+          python pipeline/osm_fetch.py bangalore
+          python pipeline/build_city.py bangalore
       - name: Validate generated city dataset
-        env:
-          CITY: ${{ inputs.city }}
         run: |
           python - <<'PY'
           import json
-          import os
           from pathlib import Path
 
-          city = os.environ["CITY"]
-          path = Path("web/public/data") / f"{city}.json"
-          shapes = Path("web/public/data") / f"{city}-shapes.geojson"
-          if not path.is_file() or not shapes.is_file():
-              raise SystemExit(f"Missing generated city files for {city}.")
-          doc = json.loads(path.read_text())
-          count = int(doc.get("counts", {}).get("on_map", 0))
+          data_path = Path("web/public/data/bangalore.json")
+          shapes_path = Path("web/public/data/bangalore-shapes.geojson")
+          if not data_path.is_file() or not shapes_path.is_file():
+              raise SystemExit("Missing generated Bengaluru files.")
+          data = json.loads(data_path.read_text(encoding="utf-8"))
+          count = int(data.get("counts", {}).get("on_map", 0))
           if count < 1:
-              raise SystemExit("No city projects were located inside the configured city bounds; refusing to publish an empty dataset.")
-          print(f"Validated {doc['city']['name']}: {count:,} mapped societies.")
+              raise SystemExit("No Bengaluru societies were mapped; refusing to publish.")
+          print(f"Validated {data['city']['name']}: {count:,} mapped societies.")
+          print("Portal feed counts:", data.get("portal_feeds", {}))
           PY
-      - name: Commit generated website data
-        env:
-          CITY: ${{ inputs.city }}
+      - name: Commit generated Bengaluru website data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
-            "web/public/data/${CITY}.json" \
-            "web/public/data/${CITY}-details.json" \
-            "web/public/data/${CITY}-shapes.geojson" \
-            "web/public/data/${CITY}-societies.csv" \
-            "web/public/data/${CITY}-units.csv" \
+            web/public/data/bangalore.json \
+            web/public/data/bangalore-details.json \
+            web/public/data/bangalore-shapes.geojson \
+            web/public/data/bangalore-societies.csv \
+            web/public/data/bangalore-units.csv \
             web/public/data/cities.json
           if git diff --cached --quiet; then
-            echo "No generated data changes to publish."
+            echo "No generated Bengaluru data changes to publish."
             exit 0
           fi
-          git commit -m "Add ${CITY} society research dataset"
-          git push
+          git commit -m "Publish Bengaluru society research dataset"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
