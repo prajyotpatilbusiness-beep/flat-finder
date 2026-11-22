@@ -9,8 +9,24 @@ def test_listing_stats_median_per_bhk():
     p = {"sale_listings": [{"bhk": 3, "price": 2e7, "psf": 10000}, {"bhk": 3, "price": 3e7, "psf": 12000}, {"bhk": 2, "price": 1e7}],
          "rent_listings": [{"bhk": 3, "price": 60000}]}
     st = pricing.listing_stats(p)
-    assert st[3]["buy"] == {"median": 25000000, "min": 20000000, "max": 30000000, "n": 2}
+    assert {k: v for k, v in st[3]["buy"].items() if k != "source_counts"} == {
+        "median": 25000000, "min": 20000000, "max": 30000000, "n": 2
+    }
+    assert st[3]["buy"]["source_counts"] == {"magicbricks": 2}
     assert st[3]["psf"] == 11000 and st[3]["rent"]["median"] == 60000 and "rent" not in st[2]
+
+
+def test_listing_stats_tracks_individual_portal_sources():
+    p = {
+        "sale_listings": [
+            {"bhk": 2, "price": 9000000, "source": "99acres"},
+            {"bhk": 2, "price": 9500000, "source": "nobroker"},
+        ],
+        "rent_listings": [{"bhk": 2, "price": 30000, "source": "magicbricks"}],
+    }
+    st = pricing.listing_stats(p)
+    assert st[2]["buy"]["source_counts"] == {"99acres": 1, "nobroker": 1}
+    assert st[2]["rent"]["source_counts"] == {"magicbricks": 1}
 
 
 def test_yield_model_drops_mistakes_and_uses_locality():
