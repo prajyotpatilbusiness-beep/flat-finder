@@ -146,3 +146,26 @@ def test_import_city_feeds_includes_housing_source(tmp_path):
     assert output[0]["source"] == "housing"
     assert stats["housing"]["accepted"] == 1
     assert stats["housing"]["skipped"] == 0
+
+
+def test_normalize_magicbricks_sale_listing():
+    row = {
+        "id": "MB-91",
+        "title": "2 BHK Apartment in Kharadi, Pune",
+        "locality": "Kharadi",
+        "city": "Pune",
+        "purpose": "sale",
+        "price": "₹ 88 L",
+        "bedrooms": 2,
+        "carpet_area": 900,
+        "latitude": 18.55,
+        "longitude": 73.94,
+        "url": "https://www.magicbricks.com/propertyDetails/MB-91",
+        "phone": "9999999999",
+    }
+    item = normalize_row(row, "magicbricks", "pune")
+    assert item["operation"] == "buy"
+    assert item["price_inr"] == 8_800_000
+    assert item["bhk"] == 2
+    assert item["latitude"] == 18.55
+    assert "phone" not in item
