@@ -273,7 +273,17 @@ function updateAnchorMap(){
   if(!anchor){
     source?.setData({type:"FeatureCollection",features:[]});
     origin?.setData({type:"FeatureCollection",features:[]});
-    map.easeTo({center:[78.9629,22.5937],zoom:4.5,duration:420});
+    const cityViews={
+      "Pune":{center:[73.8567,18.5204],zoom:10.3},
+      "Mumbai":{center:[72.8777,19.076],zoom:10.2},
+      "Bengaluru":{center:[77.5946,12.9716],zoom:10.2},
+      "Gurugram":{center:[77.0266,28.4595],zoom:10.2},
+      "Delhi NCR":{center:[77.209,28.6139],zoom:9.8},
+      "Hyderabad":{center:[78.4867,17.385],zoom:10.2},
+      "Chennai":{center:[80.2707,13.0827],zoom:10.2}
+    };
+    const view=cityViews[state.city]||{center:[78.9629,22.5937],zoom:4.5};
+    map.easeTo({...view,duration:420});
     return;
   }
   source?.setData({type:"FeatureCollection",features:[radiusFeature(anchor.lat,anchor.lng,state.radiusKm)]});
@@ -525,8 +535,8 @@ qa(".seg button").forEach(b=>b.onclick=()=>{
 });
 q("#city").onchange=e=>{
   state.city=e.target.value;
-  const matchingAnchor=(searchAnchors[state.mode]||[]).find(item=>item.city===state.city);
-  state.anchorId=state.city==="all"||!matchingAnchor?"all":matchingAnchor.id;
+  state.anchorId="all";
+  state.nearby=null;
   updateModeControls();render();
 };
 q("#source").onchange=e=>{state.source=e.target.value;render()};
