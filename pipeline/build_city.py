@@ -127,14 +127,14 @@ def dedupe(projects):
     return kept
 
 
-PORTAL_LABELS = {"magicbricks": "Magicbricks", "99acres": "99acres", "nobroker": "NoBroker"}
+PORTAL_LABELS = {"magicbricks": "Magicbricks", "99acres": "99acres", "nobroker": "NoBroker", "housing": "Housing.com"}
 
 
 def attach_portal_listings(projects, listings):
     """Attach licensed, non-personal portal price observations to confidently matched projects."""
     summary = {
         source: {"imported": 0, "matched": 0, "unmatched": 0}
-        for source in ("99acres", "nobroker")
+        for source in ("99acres", "nobroker", "housing")
     }
     for listing in listings:
         source = listing.get("source")
@@ -293,13 +293,8 @@ def shapes_for(s, area, bld_grid, sid_seed):
         r = math.sqrt((s.get("acres") or 3) * 4047 / math.pi) if (s.get("acres") or 0) < 200 else 120
         site, shape = geo.circle((s["lng"], s["lat"]), max(40, min(r, 400))), "generated"
         feats.append({"type": "Feature", "properties": {"sid": s["id"], "role": "site"}, "geometry": {"type": "Polygon", "coordinates": [site]}})
-    if s["kind"] == "plot":
-        return feats, shape
-    n = int(s.get("towers") or 0) or (max(2, min(12, round((s.get("units") or 300) / 120))) if is_tall else 8)
-    w, d = (24, 18) if is_tall else (12, 10)
-    for t in geo.generate_towers(site, n, seed=sid_seed, w_m=w, d_m=d):
-        feats.append({"type": "Feature", "properties": {"sid": s["id"], "role": "bld", "h": TOWER_H if is_tall else 10.0, "shape": "generated"},
-                      "geometry": {"type": "Polygon", "coordinates": [t]}})
+    # Only display actual OSM building footprints. Synthesised tower boxes are visually misleading
+    # and created tens of thousands of unnecessary polygons for the browser to render.
     return feats, shape
 
 
@@ -547,6 +542,42 @@ def main(city="gurgaon"):
             ],
             "portal_feeds": portal_summary,
             "societies": societies, "events": events}
+    # A smaller first-load payload: keep only fields needed for search, filters and the map.
+    # Long-form reviews, images and activity events are served from separate lazy-loaded files.
+    map_fields = (
+        "id", "name", "developer", "locality", "lat", "lng", "status", "possession", "rera_id",
+        "units", "towers", "acres", "price_min", "price_max", "kind", "kind_inferred", "config_text",
+        "amenities", "amen_facts", "url", "brochure_url", "plan_links", "verified", "note",
+        "rating", "rating_count", "review_count", "locality_rating", "listing_sources", "sale_count",
+        "rent_count", "psf_now", "prices", "nearby", "score", "score_parts", "ai_read"
+    )
+    unit_fields = (
+        "label", "bhk", "super_sqft", "carpet_sqft", "size_sqft", "size_range", "bedrooms",
+        "rooms_complete", "confidence", "ai", "est_short", "est_area", "checked_by", "source", "page"
+    )
+    map_societies = []
+    for society in societies:
+        item = {key: society[key] for key in map_fields if key in society}
+        item["unit_types"] = [
+            {key: unit[key] for key in unit_fields if key in unit}
+            for unit in society.get("unit_types", [])
+        ]
+        map_societies.append(item)
+    map_doc = {key: value for key, value in doc.items() if key not in ("societies", "events")}
+    map_doc["societies"] = map_societies
+    (WEB / f"{city}-map.json").write_text(json.dumps(map_doc, separators=(",", ":")))
+    (WEB / f"{city}-events.json").write_text(json.dumps(events, separators=(",", ":")))
+    public_listing_fields = (
+        "id", "source", "source_id", "title", "society_name", "locality", "city", "operation",
+        "price_inr", "price_period", "bhk", "area_sqft", "latitude", "longitude",
+        "property_type", "url", "posted_at"
+    )
+    public_listings = [
+        {key: listing[key] for key in public_listing_fields if key in listing}
+        for listing in portal_listings
+    ]
+    (WEB / f"{city}-portal-listings.json").write_text(json.dumps(public_listings, separators=(",", ":")))
+
     details = {}
     for s in societies:  # heavy per-society text, loaded only when a card opens
         details[s["id"]] = {k: s.pop(k) for k in ("reviews", "description", "trend", "ratings", "images")}
