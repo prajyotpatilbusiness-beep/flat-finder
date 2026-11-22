@@ -38,6 +38,11 @@ jobs:
       - name: Build Pune college and office search directory from OSM
         run: python pipeline/pune_places.py
 
+      - name: Publish imported portal facts to the web data folder
+        run: |
+          mkdir -p web/public/data
+          cp pipeline/out/pune/portal_listings.json web/public/data/pune-portal-listings.json
+
       - name: Validate Pune data and source attribution
         run: |
           python - <<'PY'
