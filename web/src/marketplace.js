@@ -244,6 +244,14 @@ function radiusFeature(lat,lng,radiusKm){
   }
   return {type:"Feature",properties:{radiusKm},geometry:{type:"Polygon",coordinates:[coordinates]}};
 }
+function updateAnchorMap(){
+  if(!map||state.nearby)return;
+  const anchor=activeAnchor(),source=map.getSource("anchor-radius"),origin=map.getSource("anchor-origin");
+  if(!anchor){source?.setData({type:"FeatureCollection",features:[]});origin?.setData({type:"FeatureCollection",features:[]});return;}
+  source?.setData({type:"FeatureCollection",features:[radiusFeature(anchor.lat,anchor.lng,state.radiusKm)]});
+  origin?.setData({type:"FeatureCollection",features:[{type:"Feature",properties:{},geometry:{type:"Point",coordinates:[anchor.lng,anchor.lat]}}]});
+  map.easeTo({center:[anchor.lng,anchor.lat],zoom:state.radiusKm<=1?14:state.radiusKm<=3?13:state.radiusKm<=5?12.3:state.radiusKm<=10?11.3:10.4,duration:420});
+}
 function showNearbyRadius(){
   const source=map?.getSource("nearby-radius");
   if(!source||!state.nearby)return;
@@ -259,7 +267,8 @@ function clearNearbySearch(){
   if(source)source.setData({type:"FeatureCollection",features:[]});
   const origin=map?.getSource("nearby-origin");
   if(origin)origin.setData({type:"FeatureCollection",features:[]});
-  if(q("#nearbyStatus"))q("#nearbyStatus").textContent="Premium GPS search is exclusive to the Pro plan. Choose a radius and tap Find homes near me; your location is used only for this search.";
+  updateAnchorMap();
+  if(q("#nearbyStatus"))q("#nearbyStatus").textContent="Pro-only GPS search is off. Campus/office radius search remains available.";
   render();
 }
 function setNearbyStatus(message,isError=false){
@@ -333,12 +342,17 @@ function initMap(){
   map=new maplibregl.Map({
     container:"map",
     style:import.meta.env.VITE_MAP_STYLE_URL||"https://tiles.openfreemap.org/styles/bright",
-    center:[78.9629,22.5937],
-    zoom:4.5,
+    center:activeAnchor()?[activeAnchor().lng,activeAnchor().lat]:[78.9629,22.5937],
+    zoom:activeAnchor()?11.5:4.5,
     attributionControl:{compact:true}
   });
   map.addControl(new maplibregl.NavigationControl({showCompass:false}),"bottom-right");
   map.on("load",()=>{
+    map.addSource("anchor-radius",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+    map.addLayer({id:"anchor-radius-fill",type:"fill",source:"anchor-radius",paint:{"fill-color":"#6842ee","fill-opacity":0.07}});
+    map.addLayer({id:"anchor-radius-line",type:"line",source:"anchor-radius",paint:{"line-color":"#6842ee","line-width":2,"line-dasharray":[2,2]}});
+    map.addSource("anchor-origin",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+    map.addLayer({id:"anchor-origin-point",type:"circle",source:"anchor-origin",paint:{"circle-color":"#6842ee","circle-radius":10,"circle-stroke-color":"#ffffff","circle-stroke-width":4}});
     map.addSource("nearby-radius",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
     map.addLayer({id:"nearby-radius-fill",type:"fill",source:"nearby-radius",paint:{"fill-color":"#0f9b91","fill-opacity":0.09}});
     map.addLayer({id:"nearby-radius-line",type:"line",source:"nearby-radius",paint:{"line-color":"#0f766e","line-width":2,"line-dasharray":[2,2]}});
@@ -346,7 +360,7 @@ function initMap(){
     map.addLayer({id:"nearby-origin-point",type:"circle",source:"nearby-origin",paint:{"circle-color":"#2563eb","circle-radius":8,"circle-stroke-color":"#ffffff","circle-stroke-width":3}});
     map.addSource("homes",{type:"geojson",data:{type:"FeatureCollection",features:[]},cluster:true,clusterMaxZoom:13,clusterRadius:52});
     map.addLayer({id:"home-clusters",type:"circle",source:"homes",filter:["has","point_count"],paint:{
-      "circle-color":"#0f766e",
+      "circle-color":"#6842ee",
       "circle-radius":["step",["get","point_count"],15,25,19,100,25,500,31],
       "circle-stroke-color":"#ffffff","circle-stroke-width":2,"circle-opacity":0.94
     }});
@@ -354,7 +368,7 @@ function initMap(){
       "text-field":["get","point_count_abbreviated"],"text-font":["Noto Sans Bold"],"text-size":12
     },paint:{"text-color":"#ffffff"}});
     map.addLayer({id:"home-points",type:"circle",source:"homes",filter:["!",["has","point_count"]],paint:{
-      "circle-color":"#0f8b83","circle-radius":6,"circle-stroke-color":"#ffffff","circle-stroke-width":1.5
+      "circle-color":["match",["get","source"],"99acres","#f59e0b","nobroker","#2563eb","housing","#ef4444","flatfinder","#16a36c","#6842ee"],"circle-radius":7,"circle-stroke-color":"#ffffff","circle-stroke-width":2
     }});
     map.addLayer({id:"home-labels",type:"symbol",source:"homes",minzoom:10.5,filter:["!",["has","point_count"]],layout:{
       "text-field":["get","priceLabel"],"text-font":["Noto Sans Bold"],"text-size":10,"text-offset":[0,1.3],"text-optional":true
@@ -378,7 +392,7 @@ function initMap(){
       map.on("mouseleave",id,()=>map.getCanvas().style.cursor="");
     }
     render();
-    showNearbyRadius();
+    if(state.nearby)showNearbyRadius();else updateAnchorMap();
   });
 }
 
@@ -468,27 +482,42 @@ async function openDetail(id){
 }
 
 
-qa(".seg button").forEach(b=>b.onclick=()=>{qa(".seg button").forEach(x=>x.classList.remove("on"));b.classList.add("on");state.purpose=b.dataset.purpose;state.budget=null;q("#budget").max=state.purpose==="rent"?100000:50000000;q("#budget").value=state.purpose==="rent"?50000:15000000;render()});
+qa(".seg button").forEach(b=>b.onclick=()=>{
+  qa(".seg button").forEach(x=>x.classList.toggle("on",x.dataset.purpose===b.dataset.purpose));
+  state.purpose=b.dataset.purpose;state.budget=null;
+  q("#budget").max=state.purpose==="rent"?100000:50000000;
+  q("#budget").value=state.purpose==="rent"?50000:15000000;
+  render();
+});
 q("#city").onchange=e=>{state.city=e.target.value;render()};
 q("#source").onchange=e=>{state.source=e.target.value;render()};
 q("#location").oninput=e=>{state.location=e.target.value.trim();render()};
 q("#budget").oninput=e=>{state.budget=Number(e.target.value);render()};
 q("#nearbyButton").onclick=startNearbySearch;
 q("#clearNearby").onclick=clearNearbySearch;
+qa("[data-mode]").forEach(button=>button.onclick=()=>{state.mode=button.dataset.mode;state.nearby=null;updateModeControls();render();});
+q("#anchorSelect").onchange=event=>{state.anchorId=event.target.value;state.nearby=null;updateModeControls();render();};
+qa("[data-radius]").forEach(button=>button.onclick=()=>{state.radiusKm=Number(button.dataset.radius)||5;updateModeControls();render();});
+qa("[data-category]").forEach(button=>button.onclick=()=>{state.category=button.dataset.category;qa("[data-category]").forEach(item=>item.classList.toggle("active",item===button));render();});
+q("#openFilters").onclick=()=>q("#filtersPanel").classList.add("mobile-open");
+q("#closeFilters").onclick=()=>q("#filtersPanel").classList.remove("mobile-open");
+q("#apply").onclick=()=>{render();q("#filtersPanel").classList.remove("mobile-open");};
+q("#seeAllHomes").onclick=()=>{state.activeTab="home";render();};
+qa("[data-mobile-tab]").forEach(button=>button.onclick=()=>setActiveTab(button.dataset.mobileTab));
 q("#sort").onchange=e=>{state.sort=e.target.value;render()};
 q("#searchBtn").onclick=()=>{state.location=q("#location").value.trim();render()};
 q("#apply").onclick=render;
 q("#reset").onclick=()=>{
-  state.city="all";state.location="";state.type="all";state.bhk="all";state.source="all";
-  state.budget=null;state.nearby=null;
-  const radiusSource=map?.getSource("nearby-radius");
-  if(radiusSource)radiusSource.setData({type:"FeatureCollection",features:[]});
-  const originSource=map?.getSource("nearby-origin");
-  if(originSource)originSource.setData({type:"FeatureCollection",features:[]});
-  if(q("#nearbyStatus"))q("#nearbyStatus").textContent="Exclusive to the Pro plan. Upgrade to Pro to unlock GPS radius search. Your location is never continuously tracked.";
-  q("#city").value="all";q("#source").value="all";q("#location").value="";
-  q("#budget").max=state.purpose==="rent"?100000:50000000;q("#budget").value=state.purpose==="rent"?50000:15000000;
-  qa(".checks input").forEach(x=>x.checked=false);renderChips();render();
+  state.location="";state.type="all";state.bhk="all";state.source="all";state.category="all";
+  state.budget=null;state.nearby=null;state.radiusKm=5;
+  for(const id of ["nearby-radius","nearby-origin"])map?.getSource(id)?.setData({type:"FeatureCollection",features:[]});
+  qa("[data-category]").forEach(button=>button.classList.toggle("active",button.dataset.category==="all"));
+  q("#nearbyStatus").textContent="Pro-only GPS search is off. Campus/office radius search remains available.";
+  q("#source").value="all";q("#location").value="";
+  q("#budget").max=state.purpose==="rent"?100000:50000000;
+  q("#budget").value=state.purpose==="rent"?50000:15000000;
+  qa(".checks input").forEach(x=>x.checked=false);
+  updateModeControls();renderChips();render();q("#filtersPanel").classList.remove("mobile-open");
 };
 q("#closeModal").onclick=()=>q("#modal").hidden=true;q("#modal").onclick=e=>{if(e.target.id==="modal")q("#modal").hidden=true};
 let authUser=null;
@@ -628,7 +657,8 @@ window.addEventListener("message",event=>{
 });
 q("#listBtn").onclick=()=>{q("#modalBody").innerHTML="<h2>List your property</h2><p class=\"muted\">Owner and agent submissions should remain private until moderation and verification checks pass.</p><div class=\"notice\">Production flow: account → ownership evidence → draft → admin review → approved listing → protected contact.</div><button class=\"primary wide\" id=\"modalClose3\">Got it</button>";q("#modal").hidden=false;q("#modalClose3").onclick=()=>q("#modal").hidden=true};
 q("#gridBtn").onclick=()=>{q("#cards").classList.remove("list");q("#gridBtn").classList.add("on");q("#mapBtn").classList.remove("on")};q("#mapBtn").onclick=()=>{q("#cards").classList.add("list");q("#mapBtn").classList.add("on");q("#gridBtn").classList.remove("on");q("#map").scrollIntoView({behavior:"smooth"})};
-q("#savedCount").textContent=state.saved.size;renderChips();initMap();
+q("#savedCount").textContent=state.saved.size;
+updateModeControls();renderChips();initMap();
 async function loadApprovedListings(){
   if(!authClient)return;
   try{
