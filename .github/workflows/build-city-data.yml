@@ -12,12 +12,12 @@ permissions:
   actions: read
 
 concurrency:
-  group: bangalore-partial-publish-${{ github.run_id }}
+  group: flat-finder-city-data-${{ github.run_id }}
   cancel-in-progress: false
 
 jobs:
   publish:
-    name: Build and publish available Bengaluru research
+    name: Optimise Gurugram and publish partial Bengaluru research
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
@@ -27,6 +27,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Import any authorised Gurugram portal feeds
+        run: python pipeline/portal_import.py gurgaon
+      - name: Refresh Gurugram map context
+        run: python pipeline/osm_fetch.py gurgaon
+      - name: Rebuild Gurugram with a lightweight map index
+        run: python pipeline/build_city.py gurgaon
+
       - name: Restore saved Bengaluru index and completed batches
         uses: actions/download-artifact@v4
         with:
@@ -36,57 +44,69 @@ jobs:
           pattern: bangalore-*
           path: pipeline/out/bangalore
           merge-multiple: true
-      - name: Import any authorized 99acres and NoBroker feeds
+      - name: Import any authorised Bengaluru portal feeds
         run: python pipeline/portal_import.py bangalore
-      - name: Merge completed batches and record incomplete coverage
+      - name: Merge completed Bengaluru batches and record incomplete coverage
         run: python pipeline/mb_crawl.py merge-partial bangalore
-      - name: Collect map context and build Bengaluru dataset
+      - name: Collect Bengaluru map context and build the city
         run: |
           python pipeline/osm_fetch.py bangalore
           python pipeline/build_city.py bangalore
-      - name: Validate partial dataset before publishing
+
+      - name: Validate both city datasets and their compact map indexes
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
 
-          data_path = Path("web/public/data/bangalore.json")
-          shapes_path = Path("web/public/data/bangalore-shapes.geojson")
-          if not data_path.is_file() or not shapes_path.is_file():
-              raise SystemExit("Missing generated Bengaluru files.")
-          data = json.loads(data_path.read_text(encoding="utf-8"))
-          coverage = data.get("collection") or {}
-          listed = int(data.get("counts", {}).get("listed", 0))
-          mapped = int(data.get("counts", {}).get("on_map", 0))
-          if not coverage or coverage.get("collected") != listed:
-              raise SystemExit("Collection coverage does not match the generated dataset.")
-          if not mapped:
-              raise SystemExit("No Bengaluru societies were mapped; refusing to publish.")
-          if coverage.get("expected", 0) < coverage.get("collected", 0):
-              raise SystemExit("Collection count exceeds the saved index.")
-          print(
-              f"Validated {data['city']['name']}: {mapped:,} mapped societies; "
-              f"{coverage['collected']:,}/{coverage['expected']:,} project details collected."
-          )
-          print("Missing project ranges:", coverage.get("missing_ranges", []))
-          print("Portal feed counts:", data.get("portal_feeds", {}))
+          root = Path("web/public/data")
+          for city in ("gurgaon", "bangalore"):
+              data_path = root / f"{city}.json"
+              map_path = root / f"{city}-map.json"
+              shapes_path = root / f"{city}-shapes.geojson"
+              events_path = root / f"{city}-events.json"
+              portal_path = root / f"{city}-portal-listings.json"
+              for path in (data_path, map_path, shapes_path, events_path, portal_path):
+                  if not path.is_file():
+                      raise SystemExit(f"Missing generated file: {path}")
+              data = json.loads(data_path.read_text(encoding="utf-8"))
+              compact = json.loads(map_path.read_text(encoding="utf-8"))
+              if int(data.get("counts", {}).get("on_map", 0)) < 1:
+                  raise SystemExit(f"No societies were mapped for {city}.")
+              if len(compact.get("societies", [])) != int(data["counts"]["on_map"]):
+                  raise SystemExit(f"Compact index and full dataset disagree for {city}.")
+              coverage = data.get("collection")
+              if city == "bangalore":
+                  listed = int(data.get("counts", {}).get("listed", 0))
+                  if not coverage or coverage.get("collected") != listed:
+                      raise SystemExit("Bengaluru coverage count does not match the generated dataset.")
+                  if coverage.get("expected", 0) < coverage.get("collected", 0):
+                      raise SystemExit("Bengaluru collection count exceeds the saved index.")
+                  print(
+                      f"Bengaluru: {data['counts']['on_map']:,} mapped; "
+                      f"{coverage['collected']:,}/{coverage['expected']:,} details collected."
+                  )
+                  print("Missing Bengaluru ranges:", coverage.get("missing_ranges", []))
+              else:
+                  print(f"Gurugram: {data['counts']['on_map']:,} mapped societies.")
+              print(f"{city} compact index: {map_path.stat().st_size:,} bytes")
+              print(f"{city} shapes: {shapes_path.stat().st_size:,} bytes")
+              print(f"{city} authorised portal listings: {len(json.loads(portal_path.read_text(encoding='utf-8'))):,}")
           PY
-      - name: Commit generated Bengaluru website data
+
+      - name: Commit optimised city data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
-            web/public/data/bangalore.json \
-            web/public/data/bangalore-details.json \
-            web/public/data/bangalore-shapes.geojson \
-            web/public/data/bangalore-societies.csv \
-            web/public/data/bangalore-units.csv \
+            web/public/data/bangalore* \
+            web/public/data/gurgaon* \
             web/public/data/cities.json
           if git diff --cached --quiet; then
-            echo "No generated Bengaluru data changes to publish."
+            echo "No generated city data changes to publish."
             exit 0
           fi
-          git commit -m "Publish partial Bengaluru society research dataset"
+          git commit -m "Publish optimised city data and map indexes"
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
