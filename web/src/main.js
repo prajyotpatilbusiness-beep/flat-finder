@@ -64,10 +64,21 @@ async function boot() {
   $('dl-results').onclick = exportResults;
 
   feed = { ambient() {}, play() {}, sweep() {}, stop() {} };
-  const loadActivity = () => fetch(`/data/${cityId}-events.json`)
-    .then((r) => { if (!r.ok) throw new Error('Activity feed unavailable'); return r.json(); })
-    .then((events) => { feed = createFeed($('feed'), $('log-mode'), { events, byId }); feed.ambient(); })
-    .catch(() => { $('log-mode').textContent = 'limited'; });
+  let activityLoaded = false, activityLoading = false;
+  const loadActivity = () => {
+    if (activityLoaded || activityLoading) return;
+    activityLoading = true;
+    fetch(`/data/${cityId}-events.json`)
+      .then((r) => { if (!r.ok) throw new Error('Activity feed unavailable'); return r.json(); })
+      .then((events) => {
+        feed = createFeed($('feed'), $('log-mode'), { events, byId });
+        activityLoaded = true;
+        if (selected) feed.play(selected); else feed.ambient();
+      })
+      .catch(() => { $('log-mode').textContent = 'limited'; })
+      .finally(() => { activityLoading = false; });
+  };
+  $('btn-log').addEventListener('click', loadActivity);
   buildFilters();
   buildSearch();
   buildList();
@@ -134,7 +145,6 @@ async function boot() {
     // any hand on the map stops a running tour
     for (const ev of ['dragstart', 'wheel', 'touchstart']) map.on(ev, (e) => { if (e.originalEvent) stopTour(); });
     intro();
-    loadActivity();
   });
 }
 
