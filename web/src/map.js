@@ -1,7 +1,7 @@
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-const COLORS = { match: '#6357df', likely: '#e49a39', probable: '#4e8fc7', unknown: '#9aa8b8', no: '#d9e1eb' };
+const COLORS = { match: '#0f8b83', likely: '#d49a43', probable: '#4d87b7', unknown: '#91a0b2', no: '#dbe4e8' };
 export const OVERVIEW = { center: [77.065, 28.425], zoom: 12.4, pitch: 50, bearing: 0 };
 
 const stateColor = (fallback) => ['case',
@@ -22,7 +22,6 @@ export function createMap(container, { mobile }) {
     touchPitch: false,
     style: {
       version: 8,
-      projection: { type: 'globe' },
       glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
       sources: {
         omt: {
@@ -53,54 +52,89 @@ export function createMap(container, { mobile }) {
 }
 
 export function addSocietyLayers(map, shapes, points) {
-  map.addSource('shapes', { type: 'geojson', data: shapes, promoteId: 'sid' });
-  map.addSource('pts', { type: 'geojson', data: points, promoteId: 'sid' });
-  map.addLayer({ id: 'site-fill', type: 'fill', source: 'shapes', filter: ['==', ['get', 'role'], 'site'],
-    paint: { 'fill-color': stateColor(COLORS.match),
-      'fill-opacity': ['match', ['feature-state', 'st'], 'match', 0.13, 'likely', 0.1, 'probable', 0.1, 'unknown', 0.05, 'no', 0, 0.08] } });
-  map.addLayer({ id: 'site-line', type: 'line', source: 'shapes', filter: ['==', ['get', 'role'], 'site'],
-    paint: { 'line-color': stateColor(COLORS.match), 'line-blur': 1.5,
-      'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.6, 16, 2],
-      'line-opacity': ['match', ['feature-state', 'st'], 'match', 0.9, 'likely', 0.7, 'probable', 0.7, 'unknown', 0.5, 'no', 0.05, 0.5] } });
-  map.addLayer({ id: 'glow', type: 'circle', source: 'pts', maxzoom: 15.5,
-    paint: { 'circle-color': stateColor(COLORS.match), 'circle-blur': 0.55,
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 2, 12, 4.5, 15, 13],
-      'circle-opacity': ['match', ['feature-state', 'st'], 'match', 0.24, 'likely', 0.18, 'probable', 0.16, 'unknown', 0.07, 'no', 0, 0.12] } });
-  map.addLayer({ id: 'bld', type: 'fill-extrusion', source: 'shapes', minzoom: 11.5, filter: ['==', ['get', 'role'], 'bld'],
-    paint: { 'fill-extrusion-color': stateColor(COLORS.match), 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': 0.95,
-      'fill-extrusion-vertical-gradient': true } });
-  map.addLayer({ id: 'society-dot', type: 'circle', source: 'pts', minzoom: 11.2,
+  map.addSource('pts', {
+    type: 'geojson',
+    data: points,
+    promoteId: 'sid',
+    cluster: true,
+    clusterMaxZoom: 12.8,
+    clusterRadius: 52,
+  });
+  map.addLayer({
+    id: 'clusters',
+    type: 'circle',
+    source: 'pts',
+    filter: ['has', 'point_count'],
+    paint: {
+      'circle-color': '#0f766e',
+      'circle-radius': ['step', ['get', 'point_count'], 15, 100, 20, 500, 26, 2000, 32],
+      'circle-stroke-color': '#ffffff',
+      'circle-stroke-width': 2,
+      'circle-opacity': 0.94,
+    },
+  });
+  map.addLayer({
+    id: 'cluster-count',
+    type: 'symbol',
+    source: 'pts',
+    filter: ['has', 'point_count'],
+    layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': ['Noto Sans Bold'], 'text-size': 12 },
+    paint: { 'text-color': '#ffffff' },
+  });
+  map.addLayer({ id: 'glow', type: 'circle', source: 'pts', minzoom: 12.8, maxzoom: 15.5,
+    filter: ['!', ['has', 'point_count']],
+    paint: { 'circle-color': stateColor(COLORS.match), 'circle-blur': 0.28,
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 12.8, 3, 15, 8],
+      'circle-opacity': ['match', ['feature-state', 'st'], 'match', 0.22, 'likely', 0.16, 'probable', 0.14, 'unknown', 0.06, 'no', 0, 0.1] } });
+  map.addLayer({ id: 'society-dot', type: 'circle', source: 'pts', minzoom: 12.8,
+    filter: ['!', ['has', 'point_count']],
     paint: { 'circle-color': stateColor(COLORS.match),
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 2.3, 14, 4.2, 17, 5.5],
-      'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.15,
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 12.8, 2.6, 15, 4.6, 17, 5.5],
+      'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1,
       'circle-opacity': ['match', ['feature-state', 'st'], 'match', 1, 'likely', 0.92, 'probable', 0.88, 'unknown', 0.48, 'no', 0, 0.7] } });
-  map.addLayer({ id: 'labels', type: 'symbol', source: 'pts', minzoom: 13.2,
-    filter: ['==', ['get', 'show'], 1],
-    layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11.5, 'text-offset': [0, -2.2],
-      'text-letter-spacing': 0.04, 'text-optional': true },
-    paint: { 'text-color': '#27364b', 'text-halo-color': 'rgba(255,255,255,.96)', 'text-halo-width': 1.8,
+  map.addLayer({ id: 'labels', type: 'symbol', source: 'pts', minzoom: 14,
+    filter: ['all', ['==', ['get', 'show'], 1], ['!', ['has', 'point_count']]],
+    layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'text-offset': [0, -2.2],
+      'text-letter-spacing': 0.03, 'text-optional': true },
+    paint: { 'text-color': '#263a4a', 'text-halo-color': 'rgba(255,255,255,.96)', 'text-halo-width': 1.6,
       'text-opacity': ['match', ['feature-state', 'st'], 'match', 1, 'likely', 0.85, 'probable', 0.85, 'unknown', 0.35, 'no', 0, 0.7] } });
+  if (shapes) addSocietyShapes(map, shapes);
 }
 
-// Pulse the glow of matches. Cheap: one paint property on ~2,700 circles.
+export function addSocietyShapes(map, shapes) {
+  if (map.getSource('shapes')) return;
+  map.addSource('shapes', { type: 'geojson', data: shapes, promoteId: 'sid' });
+  map.addLayer({ id: 'site-fill', type: 'fill', source: 'shapes', filter: ['==', ['get', 'role'], 'site'],
+    paint: { 'fill-color': stateColor(COLORS.match),
+      'fill-opacity': ['match', ['feature-state', 'st'], 'match', 0.11, 'likely', 0.08, 'probable', 0.08, 'unknown', 0.04, 'no', 0, 0.06] } });
+  map.addLayer({ id: 'site-line', type: 'line', source: 'shapes', filter: ['==', ['get', 'role'], 'site'],
+    paint: { 'line-color': stateColor(COLORS.match), 'line-blur': 0.7,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 13.5, 0.55, 16, 1.6],
+      'line-opacity': ['match', ['feature-state', 'st'], 'match', 0.85, 'likely', 0.65, 'probable', 0.65, 'unknown', 0.4, 'no', 0.03, 0.45] } });
+  map.addLayer({ id: 'bld', type: 'fill-extrusion', source: 'shapes', minzoom: 14.5, filter: ['==', ['get', 'role'], 'bld'],
+    paint: { 'fill-extrusion-color': stateColor(COLORS.match), 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': 0.9,
+      'fill-extrusion-vertical-gradient': true } });
+}
+
+// Keep match markers static. A perpetual animation was repainting the map every 260 ms.
 export function startPulse(map) {
-  setInterval(() => {
-    if (!map.getLayer('glow')) return;
-    const k = 1 + 0.10 * Math.sin(performance.now() / 780);
-    map.setPaintProperty('glow', 'circle-radius', ['interpolate', ['linear'], ['zoom'], 9, 2 * k, 12, 4.5 * k, 15, 13 * k]);
-  }, 260);
+  if (!map.getLayer('glow')) return;
+  map.setPaintProperty('glow', 'circle-radius', ['interpolate', ['linear'], ['zoom'], 12.8, 3, 15, 8]);
 }
 
 export function setStates(map, entries) {
   for (const [sid, st] of entries) {
-    map.setFeatureState({ source: 'shapes', id: sid }, { st });
-    map.setFeatureState({ source: 'pts', id: sid }, { st });
+    if (map.getSource('shapes')) map.setFeatureState({ source: 'shapes', id: sid }, { st });
+    if (map.getSource('pts')) map.setFeatureState({ source: 'pts', id: sid }, { st });
   }
 }
 
 export function setSelected(map, sid, prev) {
-  if (prev) for (const src of ['shapes', 'pts']) map.setFeatureState({ source: src, id: prev }, { sel: false });
-  if (sid) for (const src of ['shapes', 'pts']) map.setFeatureState({ source: src, id: sid }, { sel: true });
+  for (const source of ['shapes', 'pts']) {
+    if (!map.getSource(source)) continue;
+    if (prev) map.setFeatureState({ source, id: prev }, { sel: false });
+    if (sid) map.setFeatureState({ source, id: sid }, { sel: true });
+  }
 }
 
 // ---------- Streets view: a dark street map with road and area names, from OpenFreeMap vector tiles ----------
@@ -149,9 +183,9 @@ export function addBaseLayers(map) {
 
 // Building colours per base map. Light needs darker "match" colours and pale "no" colours.
 const PALETTES = {
-  night: { match: '#f5c56f', likely: '#e09c48', probable: '#7fadd7', unknown: '#718198', no: '#28384e', sel: '#ffffff', city: '#2d4058', label: '#f3f7fc', halo: 'rgba(17,26,41,.95)' },
-  streets: { match: '#6357df', likely: '#e49a39', probable: '#4e8fc7', unknown: '#9aa8b8', no: '#d9e1eb', sel: '#ffffff', city: '#c6d1df', label: '#27364b', halo: 'rgba(255,255,255,.96)' },
-  light: { match: '#6357df', likely: '#e49a39', probable: '#4e8fc7', unknown: '#9aa8b8', no: '#d9e1eb', sel: '#ffffff', city: '#c6d1df', label: '#27364b', halo: 'rgba(255,255,255,.96)' },
+  night: { match: '#55d6c6', likely: '#efb56b', probable: '#8bb9e3', unknown: '#718198', no: '#28384e', sel: '#ffffff', city: '#2d4058', label: '#f3f7fc', halo: 'rgba(17,26,41,.95)' },
+  streets: { match: '#0f8b83', likely: '#d49a43', probable: '#4d87b7', unknown: '#91a0b2', no: '#dbe4e8', sel: '#ffffff', city: '#c6d1df', label: '#27364b', halo: 'rgba(255,255,255,.96)' },
+  light: { match: '#0f8b83', likely: '#d49a43', probable: '#4d87b7', unknown: '#91a0b2', no: '#dbe4e8', sel: '#ffffff', city: '#c6d1df', label: '#27364b', halo: 'rgba(255,255,255,.96)' },
 };
 const LIGHT = {
   'st-bg': { 'background-color': '#f2f5fa' }, 'st-green': { 'fill-color': '#e3f0e6' }, 'st-park': { 'fill-color': '#d9ecd9' },
@@ -159,7 +193,7 @@ const LIGHT = {
   'st-road': { 'line-color': ['match', ['get', 'class'], ['motorway', 'trunk'], '#edbd72', ['primary', 'secondary'], '#ffffff', ['tertiary'], '#f9fbfd', '#f3f6fa'] },
   'st-rail': { 'line-color': '#b8c3d2' },
   'lbl-road': { 'text-color': '#68778d', 'text-halo-color': '#ffffff' }, 'lbl-place': { 'text-color': '#34445d', 'text-halo-color': '#ffffff' },
-  'lbl-metro': { 'text-color': '#6357df', 'text-halo-color': '#ffffff' },
+  'lbl-metro': { 'text-color': '#0f8b83', 'text-halo-color': '#ffffff' },
 };
 const DARK = {
   'st-bg': { 'background-color': '#111a29' }, 'st-green': { 'fill-color': '#1d342f' }, 'st-park': { 'fill-color': '#24453a' },
@@ -167,7 +201,7 @@ const DARK = {
   'st-road': { 'line-color': ['match', ['get', 'class'], ['motorway', 'trunk'], '#9b805b', ['primary', 'secondary'], '#53647a', ['tertiary'], '#394b62', '#2e4055'] },
   'st-rail': { 'line-color': '#55677f' },
   'lbl-road': { 'text-color': '#d3dfed', 'text-halo-color': 'rgba(17,26,41,.96)' }, 'lbl-place': { 'text-color': '#b4c3d5', 'text-halo-color': 'rgba(17,26,41,.95)' },
-  'lbl-metro': { 'text-color': '#a9a0ff', 'text-halo-color': 'rgba(17,26,41,.95)' },
+  'lbl-metro': { 'text-color': '#7dd3c7', 'text-halo-color': 'rgba(17,26,41,.95)' },
 };
 
 const colorBy = (c) => ['case', ['boolean', ['feature-state', 'sel'], false], c.sel,
@@ -190,9 +224,9 @@ export function setBaseMode(map, mode) {
   }
   map.setPaintProperty('labels', 'text-color', c.label);
   map.setPaintProperty('labels', 'text-halo-color', c.halo);
-  map.setPaintProperty('glow', 'circle-opacity', ['match', ['feature-state', 'st'],
+  if (map.getLayer('glow')) map.setPaintProperty('glow', 'circle-opacity', ['match', ['feature-state', 'st'],
     'match', mode === 'night' ? 0.28 : 0.2, 'likely', 0.14, 'probable', 0.13, 'unknown', 0.05, 'no', 0, 0.1]);
-  map.setPaintProperty('site-fill', 'fill-opacity', ['match', ['feature-state', 'st'],
+  if (map.getLayer('site-fill')) map.setPaintProperty('site-fill', 'fill-opacity', ['match', ['feature-state', 'st'],
     'match', mode === 'night' ? 0.2 : 0.16, 'likely', 0.12, 'probable', 0.11, 'unknown', 0.05, 'no', 0, 0.07]);
   map.setSky(mode === 'night'
     ? { 'sky-color': '#111a29', 'horizon-color': '#26354a', 'fog-color': '#111a29', 'sky-horizon-blend': 0.6,
@@ -205,7 +239,7 @@ export function setBaseMode(map, mode) {
 export function setHighlights(map, { glow = true, bounds = true, labels = true } = {}) {
   if (!map.getLayer('glow')) return;
   map.setLayoutProperty('glow', 'visibility', glow ? 'visible' : 'none');
-  map.setLayoutProperty('site-fill', 'visibility', bounds ? 'visible' : 'none');
-  map.setLayoutProperty('site-line', 'visibility', bounds ? 'visible' : 'none');
+  if (map.getLayer('site-fill')) map.setLayoutProperty('site-fill', 'visibility', bounds ? 'visible' : 'none');
+  if (map.getLayer('site-line')) map.setLayoutProperty('site-line', 'visibility', bounds ? 'visible' : 'none');
   map.setLayoutProperty('labels', 'visibility', labels ? 'visible' : 'none');
 }
