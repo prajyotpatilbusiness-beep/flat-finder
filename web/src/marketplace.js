@@ -12,6 +12,7 @@ let listings=[
 {id:"demo-delhi-1",city:"Delhi NCR",locality:"Noida Sector 137",title:"Metroview Apartments",purpose:"sale",type:"Apartment",bhk:3,bath:3,area:1450,price:11200000,deposit:0,furnishing:"Unfurnished",amenities:["Parking","Lift","Security","Power backup"],score:8.9,lat:28.5055,lng:77.3910,image:"https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=900&q=80",tag:"Demo sale",distance:"Near Noida Expressway"},
 {id:"demo-hyderabad-1",city:"Hyderabad",locality:"Gachibowli",title:"Cedar Park Homes",purpose:"sale",type:"Apartment",bhk:2,bath:2,area:1180,price:8900000,deposit:0,furnishing:"Semi-furnished",amenities:["Parking","Lift","Security","Gym","Power backup"],score:9.0,lat:17.4401,lng:78.3489,image:"https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80",tag:"Demo sale",distance:"Near Financial District"},
 {id:"demo-chennai-1",city:"Chennai",locality:"OMR",title:"Palm Court",purpose:"rent",type:"Apartment",bhk:3,bath:3,area:1400,price:42000,deposit:120000,furnishing:"Furnished",amenities:["Parking","Lift","Security","Pool"],score:8.7,lat:12.9352,lng:80.2300,image:"https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=900&q=80",tag:"Demo",distance:"Near Tidel Park"}];
+listings=listings.map(item=>({...item,source:item.source||"demo"}));
 
 const state={
   purpose:"rent",city:"all",location:"",type:"Apartment",bhk:"all",
@@ -131,7 +132,7 @@ let map;
 function updateMap(rows){
   const source=map?.getSource("homes");
   if(!source)return;
-  const features=rows.filter(l=>Number.isFinite(Number(l.lat))&&Number.isFinite(Number(l.lng)))
+  const features=rows.filter(l=>l.lat!=null&&l.lng!=null&&Number.isFinite(Number(l.lat))&&Number.isFinite(Number(l.lng)))
     .map(l=>({
       type:"Feature",
       properties:{
