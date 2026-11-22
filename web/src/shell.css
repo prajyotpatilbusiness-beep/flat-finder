@@ -47,17 +47,16 @@ body{display:flex;flex-direction:column;min-height:100%;overflow:hidden;backgrou
 .auth-gate-form>small{text-align:center}
 @media(max-width:520px){.auth-gate{padding:14px}.auth-gate-card{padding:25px 20px;border-radius:20px}.auth-gate-actions{grid-template-columns:1fr}.auth-gate-form-foot{align-items:flex-start;flex-direction:column}.auth-gate-form-foot>span{line-height:1.6}}
 
+
 @media(max-width:740px){
- .shell-header{flex:0 0 auto;min-height:0;padding:9px 12px 8px;gap:8px;flex-wrap:wrap}
- .shell-brand{min-width:0;flex:1}
+ .shell-header{height:56px;min-height:56px;flex:0 0 56px;padding:0 14px;gap:12px;flex-wrap:nowrap}
+ .shell-brand{min-width:0;flex:1;gap:8px}
  .shell-mark{width:34px;height:34px;border-radius:11px;font-size:21px}
  .shell-brand-copy strong{font-size:16px}
  .shell-brand-copy small{font-size:9px}
- .shell-message{display:none}
- .shell-auth-button{padding:9px 13px;font-size:11px}
- .shell-tabs{width:100%;gap:5px;padding:4px}
- .shell-tab{flex:1;justify-content:center;padding:9px 6px;font-size:11px}
- .shell-main{min-height:0}
+ .shell-message,.shell-tabs{display:none!important}
+ .shell-auth-button{min-height:36px;padding:7px 10px;font-size:10px}
+ .shell-main{min-height:0;height:calc(100dvh - 56px);flex:1}
 }
 
 .shell-auth-button{display:inline-flex;align-items:center;gap:8px}
