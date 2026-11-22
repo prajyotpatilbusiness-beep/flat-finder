@@ -9,7 +9,7 @@ listings=listings.map(item=>({...item,source:item.source||"demo"}));
 const state={
   purpose:"rent",city:"Pune",location:"",type:"all",bhk:"all",
   budget:null,sort:"recommended",source:"all",nearby:null,
-  mode:"campus",anchorId:"pccoe",radiusKm:5,category:"all",activeTab:"home",
+  mode:"campus",anchorId:"all",radiusKm:5,category:"all",activeTab:"home",
   saved:new Set(JSON.parse(localStorage.getItem("ff-saved")||"[]"))
 };
 const money=n=>n>=10000000?"₹"+(n/10000000).toFixed(2)+" Cr":n>=100000?"₹"+(n/100000).toFixed(1)+" L":"₹"+Math.round(n).toLocaleString("en-IN");
@@ -80,13 +80,13 @@ function updateModeControls(){
  const anchor=activeAnchor();if(anchor)state.city=anchor.city;q("#city").value=state.city;
  q("#anchorEyebrow").textContent=state.mode==="campus"?"CAMPUS SEARCH":"OFFICE SEARCH";
  q("#anchorLabel").textContent=state.mode==="campus"?"Choose your college":"Choose your workplace";
- q("#anchorCity").textContent=anchor?.city||"All India";
+ q("#anchorCity").textContent=anchor?.city||(state.city==="all"?"All India":state.city);
  q("#radiusTitle").textContent=state.mode==="campus"?"Distance from campus":"Distance from office";
  q("#modeSummary").textContent=state.mode==="campus"?"Student-friendly stays and flats around colleges and universities.":"Homes and shared stays around IT parks and business districts.";
  q("#resultsEyebrow").textContent=state.mode==="campus"?"CAMPUS PICKS":"OFFICE PICKS";
  qa("[data-mode]").forEach(button=>{const on=button.dataset.mode===state.mode;button.classList.toggle("active",on);button.setAttribute("aria-selected",String(on));});
- q("#topNearbyTitle").textContent="Top homes near "+(anchor?.name||"your selected area");
- q("#propertySectionTitle").textContent="Best picks near "+(anchor?.name||"your area");
+ q("#topNearbyTitle").textContent=anchor?"Top homes near "+anchor.name:(state.city==="all"?"Top homes across India":"Top homes across "+state.city);
+ q("#propertySectionTitle").textContent=anchor?"Best picks near "+anchor.name:(state.city==="all"?"Homes across India":"Homes across "+state.city);
  qa("[data-radius]").forEach(button=>button.classList.toggle("active",Number(button.dataset.radius)===state.radiusKm));
  q("#radiusValue").textContent=state.radiusKm+" KM";
 }
@@ -208,8 +208,9 @@ function render(){
   q("#count").textContent=rows.length.toLocaleString("en-IN");
   const anchor=activeAnchor();
   q("#context").textContent=(anchor?anchor.city:"Across India")+" · "+(state.purpose==="rent"?"Rent":"Buy")+" · "+state.radiusKm+" km radius"+(state.activeTab==="saved"?" · Saved":"")+(state.source==="all"?"":" · "+(portalLabels[state.source]||state.source));
-  q("#topNearbyTitle").textContent=(state.activeTab==="saved"?"Saved properties near ":"Top homes near ")+(anchor?.name||"your selected area");
-  const propertyTitle=q("#propertySectionTitle");if(propertyTitle)propertyTitle.textContent=state.activeTab==="saved"?"Your saved properties":"Best picks near "+(anchor?.name||"your area");
+  q("#topNearbyTitle").textContent=state.activeTab==="saved"?"Your saved properties":anchor?"Top homes near "+anchor.name:(state.city==="all"?"Top homes across India":"Top homes across "+state.city);
+  const propertyTitle=q("#propertySectionTitle");
+  if(propertyTitle)propertyTitle.textContent=state.activeTab==="saved"?"Your saved properties":anchor?"Best picks near "+anchor.name:(state.city==="all"?"Homes across India":"Homes across "+state.city);
   q("#mobileSavedCount").textContent=state.saved.size;
   q("#budgetLabel").textContent=state.purpose==="rent"?"monthly rent":"maximum sale price";
   q("#budgetValue").textContent=state.budget==null?"Any budget":money(state.budget);
