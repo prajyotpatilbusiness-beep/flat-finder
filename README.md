@@ -17,7 +17,13 @@ Gurugram is first: about 2,700 projects from Magicbricks, building outlines from
 - **Faint outline**: not checked yet. We have no room sizes for it, so it is neither a pass nor a fail.
 - **Dark**: does not match.
 
-Building shapes come from OpenStreetMap where they are mapped. Where they are not, towers are drawn from the listed tower count and say "approximate shape" on the card. Shapes are visual only; data numbers are never estimated.
+Building footprints and residential site outlines come from OpenStreetMap where mapped. The map no longer fabricates tower blocks when building footprints are missing; it uses a clearly approximate site outline instead. Shapes are visual only and are not proof of a building footprint.
+
+## Marketplace performance and maps
+
+The map uses MapLibre GL JS with OpenFreeMap vector tiles. The first-load path uses a compact city index for search/filtering, clusters nearby society points at wider zooms, and postpones the detailed site-outline layer until a user zooms in. Long-form project activity is loaded only when the activity panel is opened. Synthetic tower boxes were removed because they created thousands of extra polygons and could be mistaken for real buildings. Detailed polygons still come from the OpenStreetMap data available for each site.
+
+This keeps the existing open vector-map stack rather than switching to a paid map SDK: profiling found the biggest bottleneck was the volume and timing of our own GeoJSON, not a lack of map-rendering capability.
 
 ## How bedroom sizes are read
 
@@ -32,7 +38,7 @@ Bedrooms under 8 ft wide are dropped as mis-pairings. Plans that are 3D renders 
 
 ## Buy or rent
 
-Every society shows buy prices and monthly rents per BHK: medians, ranges and counts from the listing observations available to Flat Finder. Magicbricks project pages are the current live source. Additional 99acres and NoBroker observations are supported only when supplied through an authorized CSV/JSON feed; until such a feed is supplied, those portals do not contribute live prices. Where a society has no listings, the site shows **our estimate, marked "~"**, with the working shown:
+Every society shows buy prices and monthly rents per BHK: medians, ranges and counts from the listing observations available to Flat Finder. Magicbricks project pages are the current live source. Additional 99acres, NoBroker and Housing.com observations are supported only when supplied through an authorized CSV/JSON feed; until such a feed is supplied, those portals do not contribute live prices. Where a society has no listings, the site shows **our estimate, marked "~"**, with the working shown:
 
 - rent from price (or price from rent) using the rental yield measured on 960 society and BHK pairs that have both (about 2.5% of the price per year, correlation between log price and log rent 0.91), using the locality's own yield where it has at least 4 pairs;
 - when there are no listings at all, unit size x the project's price per sq ft, then rent via yield.
@@ -41,15 +47,15 @@ Cards also show resident ratings by category, review snippets, the 5-year price 
 
 ## Additional property portals (permission-aware)
 
-Flat Finder has a normalized import path for authorized 99acres and NoBroker data feeds. It does not scrape these portals or bypass their interfaces.
+Flat Finder has a normalized import path for authorized 99acres, NoBroker and Housing.com data feeds. It does not scrape these portals or bypass their interfaces. Imported listings appear in the marketplace with a source badge and a link back to the portal; they do not expose portal seller contacts.
 
 1. Obtain a feed/export and written permission that covers automated access, aggregation and public display.
-2. Place the non-personal CSV or JSON export at `pipeline/incoming/<city>/99acres.csv` or `pipeline/incoming/<city>/nobroker.csv`.
+2. Place the non-personal CSV or JSON export at `pipeline/incoming/<city>/99acres.csv`, `pipeline/incoming/<city>/nobroker.csv` or `pipeline/incoming/<city>/housing.csv`.
 3. Run `python pipeline/portal_import.py <city>`, then `python pipeline/build_city.py <city>`.
 
 The importer keeps listing ID, title/society, locality, buy/rent type, asking price, BHK, area, coordinates, portal URL and posting date. It discards seller names, phone numbers, email addresses, photos and other contact/account data. A listing contributes to a society's price statistics only when the society name and locality (or close coordinates) match unambiguously. Per-source counts are retained so the displayed median can be traced to its portals. Unmatched or ambiguous rows are excluded rather than guessed.
 
-NoBroker's published terms restrict the use of its content and reverse engineering to build a competing product. 99acres' current automated-access permission could not be confirmed from an official terms page during this implementation. Therefore, both integrations stay feed-import only unless the relevant rights and permissions are documented.
+NoBroker's published terms restrict certain uses of its content and reverse engineering to build a competing product. Housing.com's user terms describe rights it receives for listed content, but do not grant Flat Finder blanket permission to reuse Housing listings. 99acres' current automated-access permission could not be confirmed from an official terms page during this implementation. Therefore, all three integrations stay feed-import only unless Flat Finder has a written license or other documented rights for the specific feed and public display.
 
 ## Download the data
 
