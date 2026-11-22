@@ -21,8 +21,9 @@ SOURCE_DOMAINS = {
     "99acres": {"99acres.com", "www.99acres.com"},
     "nobroker": {"nobroker.in", "www.nobroker.in"},
     "housing": {"housing.com", "www.housing.com"},
+    "magicbricks": {"magicbricks.com", "www.magicbricks.com"},
 }
-PORTAL_SOURCES = ("99acres", "nobroker", "housing")
+PORTAL_SOURCES = ("99acres", "nobroker", "housing", "magicbricks")
 CITY_ALIASES = {
     "bangalore": {"bangalore", "bengaluru"},
     "mumbai": {"mumbai"},
