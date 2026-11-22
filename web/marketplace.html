@@ -17,8 +17,26 @@
 <div class="field"><label>CITY</label><select id="city"><option value="all">All India</option><option>Pune</option><option>Mumbai</option><option>Bengaluru</option><option>Delhi NCR</option><option>Hyderabad</option><option>Chennai</option><option>Gurugram</option><option>Noida</option><option>Kolkata</option></select></div>
 <div class="field"><label>LISTING SOURCE</label><select id="source"><option value="all">All sources</option><option value="flatfinder">Flat Finder members</option><option value="99acres">99acres</option><option value="nobroker">NoBroker</option><option value="housing">Housing.com</option></select></div>
 <button class="primary searchbtn" id="searchBtn">⌕ Search homes</button></section>
+<section class="nearby-search" aria-label="Premium GPS property search">
+  <div class="nearby-copy">
+    <span class="pro-feature-label">PRO FEATURE</span>
+    <h2>Find homes around your current location</h2>
+    <p>See available properties inside your chosen radius. Your existing filters still apply. Location is requested only when you start the search.</p>
+  </div>
+  <div class="nearby-controls">
+    <label for="nearbyRadius">Radius
+      <select id="nearbyRadius">
+        <option value="1">1 km</option><option value="3">3 km</option><option value="5" selected>5 km</option><option value="10">10 km</option><option value="25">25 km</option>
+      </select>
+    </label>
+    <button type="button" class="primary" id="nearbyButton">Find homes near me</button>
+    <button type="button" class="ghost" id="clearNearby" hidden>Clear radius</button>
+  </div>
+  <p class="nearby-status" id="nearbyStatus" role="status" aria-live="polite">Exclusive to the Pro plan. Upgrade to Pro to unlock GPS radius search. Your location is never continuously tracked.</p>
+</section>
 <section class="market-stats" aria-label="Marketplace coverage"><article><span>PORTAL FEEDS</span><b id="portalSourceCount">3</b><small>Sources supported</small></article><article><span>PORTAL LISTINGS</span><b id="portalListingCount">0</b><small>From authorised feeds</small></article><article><span>MEMBER LISTINGS</span><b id="approvedListingCount">0</b><small>Approved on Flat Finder</small></article><article><span>RESEARCH CITIES</span><b id="researchCityCount">2</b><small>Society map datasets</small></article></section>
 <div class="demo" id="sourceNotice"><b>Source transparency:</b> sample homes are fictional. Portal listings appear only from authorised 99acres, NoBroker and Housing.com feeds, with a link back to the original listing.</div>
+<div class="data-status" id="dataStatus" role="status" aria-live="polite">Loading the available listings…</div>
 <section class="content"><aside class="filters"><div class="filterhead"><div><span class="eyebrow">REFINE</span><h2>Filters</h2></div><button id="reset">Reset</button></div>
 <label>Property type</label><div class="chips" id="types"></div><label>BHK</label><div class="chips" id="bhks"></div>
 <label>Maximum <span id="budgetLabel">monthly rent</span><b id="budgetValue">₹50,000</b></label><input id="budget" type="range" min="5000" max="100000" step="2500" value="50000"><div class="range"><span>₹5k</span><span>₹1L+</span></div>
