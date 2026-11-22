@@ -128,7 +128,11 @@ function render(){
   if(q("#nearbyStatus")&&state.nearby)q("#nearbyStatus").textContent="Showing properties within "+state.nearby.radiusKm+" km. Your exact location is used for this search only.";
   if(q("#nearbyButton"))q("#nearbyButton").textContent=state.nearby?"Refresh nearby homes":"Find homes near me"; 
   if(q("#clearNearby"))q("#clearNearby").hidden=!state.nearby;
-  if(q("#dataStatus"))q("#dataStatus").textContent="Showing "+rows.length.toLocaleString("en-IN")+" matches from "+listings.length.toLocaleString("en-IN")+" available records. Sample records are labelled; live portal feeds and approved owner listings appear only when supplied and approved.";
+  if(q("#dataStatus")){
+    const sampleCount=listings.filter(item=>item.source==="demo").length;
+    const liveCount=listings.length-sampleCount;
+    q("#dataStatus").textContent="Showing "+rows.length.toLocaleString("en-IN")+" matches from "+listings.length.toLocaleString("en-IN")+" records ("+sampleCount.toLocaleString("en-IN")+" clearly labelled samples, "+liveCount.toLocaleString("en-IN")+" imported/approved live listings)."+(liveCount===0?" No live portal feed imports or approved member properties are currently connected.":"");
+  }
   q("#cards").innerHTML=rows.length?rows.map(card).join(""):"<div class=\"empty\"><div>⌂</div><h3>No homes match these filters.</h3><p>Try a wider budget, another city or another listing source.</p><button class=\"primary\" id=\"emptyReset\">Reset filters</button></div>";
   qa("[data-save]").forEach(b=>b.onclick=()=>toggleSave(b.dataset.save));
   qa("[data-detail]").forEach(b=>b.onclick=()=>openDetail(b.dataset.detail));
@@ -176,6 +180,8 @@ function showNearbyRadius(){
   const source=map?.getSource("nearby-radius");
   if(!source||!state.nearby)return;
   source.setData({type:"FeatureCollection",features:[radiusFeature(state.nearby.lat,state.nearby.lng,state.nearby.radiusKm)]});
+  const origin=map.getSource("nearby-origin");
+  if(origin)origin.setData({type:"FeatureCollection",features:[{type:"Feature",properties:{},geometry:{type:"Point",coordinates:[state.nearby.lng,state.nearby.lat]}}]});
   const zoom=state.nearby.radiusKm<=1?14:state.nearby.radiusKm<=3?13:state.nearby.radiusKm<=5?12.4:state.nearby.radiusKm<=10?11.5:10.5;
   map.easeTo({center:[state.nearby.lng,state.nearby.lat],zoom,duration:650});
 }
@@ -183,6 +189,8 @@ function clearNearbySearch(){
   state.nearby=null;
   const source=map?.getSource("nearby-radius");
   if(source)source.setData({type:"FeatureCollection",features:[]});
+  const origin=map?.getSource("nearby-origin");
+  if(origin)origin.setData({type:"FeatureCollection",features:[]});
   if(q("#nearbyStatus"))q("#nearbyStatus").textContent="Premium GPS search is exclusive to the Pro plan. Choose a radius and tap Find homes near me; your location is used only for this search.";
   render();
 }
@@ -266,6 +274,8 @@ function initMap(){
     map.addSource("nearby-radius",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
     map.addLayer({id:"nearby-radius-fill",type:"fill",source:"nearby-radius",paint:{"fill-color":"#0f9b91","fill-opacity":0.09}});
     map.addLayer({id:"nearby-radius-line",type:"line",source:"nearby-radius",paint:{"line-color":"#0f766e","line-width":2,"line-dasharray":[2,2]}});
+    map.addSource("nearby-origin",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+    map.addLayer({id:"nearby-origin-point",type:"circle",source:"nearby-origin",paint:{"circle-color":"#2563eb","circle-radius":8,"circle-stroke-color":"#ffffff","circle-stroke-width":3}});
     map.addSource("homes",{type:"geojson",data:{type:"FeatureCollection",features:[]},cluster:true,clusterMaxZoom:13,clusterRadius:52});
     map.addLayer({id:"home-clusters",type:"circle",source:"homes",filter:["has","point_count"],paint:{
       "circle-color":"#0f766e",
@@ -300,6 +310,7 @@ function initMap(){
       map.on("mouseleave",id,()=>map.getCanvas().style.cursor="");
     }
     render();
+    showNearbyRadius();
   });
 }
 
@@ -401,7 +412,12 @@ q("#searchBtn").onclick=()=>{state.location=q("#location").value.trim();render()
 q("#apply").onclick=render;
 q("#reset").onclick=()=>{
   state.city="all";state.location="";state.type="all";state.bhk="all";state.source="all";
-  state.budget=null;
+  state.budget=null;state.nearby=null;
+  const radiusSource=map?.getSource("nearby-radius");
+  if(radiusSource)radiusSource.setData({type:"FeatureCollection",features:[]});
+  const originSource=map?.getSource("nearby-origin");
+  if(originSource)originSource.setData({type:"FeatureCollection",features:[]});
+  if(q("#nearbyStatus"))q("#nearbyStatus").textContent="Exclusive to the Pro plan. Upgrade to Pro to unlock GPS radius search. Your location is never continuously tracked.";
   q("#city").value="all";q("#source").value="all";q("#location").value="";
   q("#budget").max=state.purpose==="rent"?100000:50000000;q("#budget").value=state.purpose==="rent"?50000:15000000;
   qa(".checks input").forEach(x=>x.checked=false);renderChips();render();
