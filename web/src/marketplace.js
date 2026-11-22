@@ -343,7 +343,7 @@ async function startNearbySearch(){
       :error?.code===3?"The location request timed out. Try again."
       :(error?.message||"Nearby search failed. Please try again.");
     setNearbyStatus(message,true);
-    if(String(error?.message||"").includes("PREMIUM_PLAN_REQUIRED")){
+    if(String(error?.message||"").includes("PRO_PLAN_REQUIRED")){
       openPlans(null,"Premium GPS radius search is available with Pro membership.");
     }
   }finally{

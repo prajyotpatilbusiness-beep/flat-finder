@@ -155,3 +155,22 @@ body{display:flex;flex-direction:column;min-height:100%;overflow:hidden;backgrou
   pointer-events: none;
   user-select: none;
 }
+
+
+/* Install-to-home-screen UI for iOS, Android and desktop browsers. */
+.shell-install-button{min-height:36px;padding:8px 12px;border:1px solid #d9d1ff;border-radius:10px;background:#f2eeff;color:#5935df;font:800 11px "DM Sans",sans-serif;cursor:pointer;white-space:nowrap}
+.shell-install-button[hidden]{display:none}
+.pwa-help-layer{position:fixed;z-index:220;inset:0;display:grid;place-items:center;padding:18px;background:rgba(21,18,45,.46);backdrop-filter:blur(7px)}
+.pwa-help-layer[hidden]{display:none}
+.pwa-help-card{position:relative;width:min(410px,100%);padding:27px 23px 22px;border:1px solid #ece8fa;border-radius:22px;background:#fff;box-shadow:0 28px 90px rgba(24,17,58,.25)}
+.pwa-help-close{position:absolute;top:12px;right:14px;width:32px;height:32px;border:0;border-radius:50%;background:#f2f0f8;color:#55536a;font-size:22px;cursor:pointer}
+.pwa-help-mark{width:43px;height:43px;display:grid;place-items:center;margin-bottom:12px;border-radius:14px;background:linear-gradient(135deg,#5128e8,#8a62ff);color:#fff;font-size:26px}
+.pwa-help-card h2{margin:0 34px 18px 0;color:#1a1930;font:800 21px Manrope,sans-serif}
+.pwa-help-step{padding:12px 13px;margin:9px 0;border:1px solid #eeeaf7;border-radius:13px;background:#fcfbff}
+.pwa-help-step b{font-size:12px;color:#5131d3}
+.pwa-help-step p{margin:6px 0 0;color:#686a7f;font-size:11px;line-height:1.55}
+.pwa-help-done{width:100%;margin-top:10px}
+@media(max-width:740px){
+ .shell-install-button{min-height:34px;padding:7px 8px;font-size:9px}
+ .pwa-help-card{padding:24px 18px 18px}
+}

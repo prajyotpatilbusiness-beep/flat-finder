@@ -1,0 +1,24 @@
+{
+  "name": "Flat Finder — Homes & Society Intelligence",
+  "short_name": "Flat Finder",
+  "description": "Find homes around your campus, workplace or current location.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait-primary",
+  "background_color": "#f6f6fd",
+  "theme_color": "#5b35ed",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

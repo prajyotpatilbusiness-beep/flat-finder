@@ -6,6 +6,13 @@
   <meta name="theme-color" content="#f2faf8">
   <title>Flat Finder — Homes & Society Intelligence</title>
   <meta name="description" content="Search homes across India, compare rents and sale properties, and explore deeper housing-society research on one map.">
+  <meta name="theme-color" content="#5b35ed">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Flat Finder">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
@@ -29,6 +36,7 @@
         <span class="tab-icon">✧</span><span>Plans</span>
       </button>
     </nav>
+    <button class="shell-install-button" id="shell-install-button" type="button" hidden>Install app</button>
     <button class="shell-auth-button" id="shell-auth-button" type="button" aria-haspopup="dialog" aria-controls="account-layer"><span class="shell-account-avatar" id="shell-account-avatar" hidden></span><span id="shell-auth-label">Sign in</span><span class="shell-auth-chevron" aria-hidden="true">⌄</span></button>
   </header>
   <main class="shell-main is-locked">
@@ -98,6 +106,16 @@
     </section>
   </div>
   </main>
+  <div class="pwa-help-layer" id="pwa-help-layer" hidden role="dialog" aria-modal="true" aria-labelledby="pwa-help-title">
+    <section class="pwa-help-card">
+      <button class="pwa-help-close" id="pwa-help-close" type="button" aria-label="Close install instructions">×</button>
+      <span class="pwa-help-mark">⌂</span>
+      <h2 id="pwa-help-title">Add Flat Finder to your phone</h2>
+      <div class="pwa-help-step"><b>iPhone / iPad</b><p>Open this page in Safari, tap the Share icon, choose <strong>Add to Home Screen</strong>, then tap Add.</p></div>
+      <div class="pwa-help-step"><b>Android</b><p>Open this page in Chrome, tap the browser menu, choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</p></div>
+      <button class="shell-install-button pwa-help-done" id="pwa-help-done" type="button">Got it</button>
+    </section>
+  </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script type="module" src="/src/shell.js"></script>
 </body>

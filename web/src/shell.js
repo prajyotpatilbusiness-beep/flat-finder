@@ -694,4 +694,46 @@ import { authClient, authConfigured } from "./auth.js";
   tabs.forEach((tab) => tab.addEventListener("click", () => activate(tab.dataset.tab)));
   activeView = location.hash === "#research" ? "research" : location.hash === "#plans" ? "plans" : "homes";
   activate(activeView, { updateHash: false });
+
+  // Progressive Web App install and offline shell support.
+  const installButton = document.getElementById("shell-install-button");
+  const installHelp = document.getElementById("pwa-help-layer");
+  let deferredInstallPrompt = null;
+  const isIOSDevice = /iphone|ipad|ipod/i.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isInstalledApp = () => window.matchMedia("(display-mode: standalone)").matches
+    || navigator.standalone === true;
+  const closeInstallHelp = () => { if (installHelp) installHelp.hidden = true; };
+  document.getElementById("pwa-help-close")?.addEventListener("click", closeInstallHelp);
+  document.getElementById("pwa-help-done")?.addEventListener("click", closeInstallHelp);
+  installHelp?.addEventListener("click", event => { if (event.target === installHelp) closeInstallHelp(); });
+  if (installButton && !isInstalledApp() && isIOSDevice) installButton.hidden = false;
+  window.addEventListener("beforeinstallprompt", event => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    if (installButton) installButton.hidden = false;
+  });
+  installButton?.addEventListener("click", async () => {
+    if (deferredInstallPrompt) {
+      const prompt = deferredInstallPrompt;
+      deferredInstallPrompt = null;
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+      if (choice?.outcome === "accepted") installButton.hidden = true;
+      return;
+    }
+    if (installHelp) installHelp.hidden = false;
+  });
+  window.addEventListener("appinstalled", () => {
+    if (installButton) installButton.hidden = true;
+    deferredInstallPrompt = null;
+  });
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(error => {
+        console.info("Flat Finder offline shell could not be registered:", error?.message || error);
+      });
+    });
+  }
+
 })();
