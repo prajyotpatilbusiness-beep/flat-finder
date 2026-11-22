@@ -28,7 +28,14 @@ MIRRORS = [
 OFFICE_NAME = re.compile(
     r"\b(it park|tech(?:nology)? park|business park|business centre|business center|"
     r"corporate park|special economic zone|sez|infotech|knowledge park|"
-    r"world trade center|eon free zone|magarpatta|hinjawadi|rajiv gandhi infotech)\b",
+    r"world trade center|eon free zone|magarpatta|hinjawadi|rajiv gandhi infotech|"
+    r"industrial estate|midc|business district|technology campus)\b",
+    re.I,
+)
+EXCLUDE_NAME = re.compile(
+    r"\b(220\s*kv|substation|transformer|power line|electricity|banquet|"
+    r"restaurant|cafe|hotel|mall|cinema|theatre|temple|church|hospital|"
+    r"school|college|university|resort|gym|club)\b",
     re.I,
 )
 
@@ -103,7 +110,7 @@ def address(tags):
 def normalize_element(element):
     tags = element.get("tags") or {}
     name = str(tags.get("name") or tags.get("official_name") or "").strip()
-    if not name:
+    if not name or EXCLUDE_NAME.search(name):
         return None
 
     amenity = tags.get("amenity")
@@ -120,8 +127,6 @@ def normalize_element(element):
         group, kind = "offices", "office_hub"
     elif building == "office":
         group, kind = "offices", "office_building"
-    elif landuse in {"commercial", "industrial"}:
-        group, kind = "offices", "commercial_or_industrial_area"
     else:
         return None
 
