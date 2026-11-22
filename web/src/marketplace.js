@@ -15,14 +15,14 @@ let listings=[
 listings=listings.map(item=>({...item,source:item.source||"demo"}));
 
 const state={
-  purpose:"rent",city:"all",location:"",type:"Apartment",bhk:"all",
-  budget:50000,sort:"recommended",source:"all",
+  purpose:"rent",city:"all",location:"",type:"all",bhk:"all",
+  budget:null,sort:"recommended",source:"all",nearby:null,
   saved:new Set(JSON.parse(localStorage.getItem("ff-saved")||"[]"))
 };
 const money=n=>n>=10000000?"₹"+(n/10000000).toFixed(2)+" Cr":n>=100000?"₹"+(n/100000).toFixed(1)+" L":"₹"+Math.round(n).toLocaleString("en-IN");
 const q=s=>document.querySelector(s);
 const qa=s=>[...document.querySelectorAll(s)];
-const typeList=["Apartment","Independent House","Villa","Studio","PG / Co-living"];
+const typeList=["all","Apartment","Independent House","Villa","Studio","PG / Co-living"];
 const bhkList=["all","1","2","3","4+"];
 const portalLabels={"99acres":"99acres",nobroker:"NoBroker",housing:"Housing.com",flatfinder:"Flat Finder",demo:"Sample"};
 const cityNames={gurgaon:"Gurugram",bangalore:"Bengaluru",mumbai:"Mumbai",pune:"Pune"};
@@ -44,10 +44,16 @@ function propertyType(value){
   return "Apartment";
 }
 function renderChips(){
-  q("#types").innerHTML=typeList.map(x=>"<button class=\"chip "+(state.type===x?"on":"")+"\" data-type=\""+x+"\">"+x+"</button>").join("");
+  q("#types").innerHTML=typeList.map(x=>"<button class=\"chip "+(state.type===x?"on":"")+"\" data-type=\""+x+"\">"+(x==="all"?"All types":x)+"</button>").join("");
   q("#bhks").innerHTML=bhkList.map(x=>"<button class=\"chip "+(state.bhk===x?"on":"")+"\" data-bhk=\""+x+"\">"+(x==="all"?"Any":x)+"</button>").join("");
   qa("[data-type]").forEach(b=>b.onclick=()=>{state.type=b.dataset.type;renderChips();render()});
   qa("[data-bhk]").forEach(b=>b.onclick=()=>{state.bhk=b.dataset.bhk;renderChips();render()});
+}
+function distanceKm(lat1,lng1,lat2,lng2){
+  const radians=value=>value*Math.PI/180;
+  const dLat=radians(lat2-lat1),dLng=radians(lng2-lng1);
+  const a=Math.sin(dLat/2)**2+Math.cos(radians(lat1))*Math.cos(radians(lat2))*Math.sin(dLng/2)**2;
+  return 6371*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 function matches(l){
   if(l.purpose!==state.purpose)return false;
@@ -55,9 +61,14 @@ function matches(l){
   if(state.source!=="all"&&l.source!==state.source)return false;
   const text=(l.city+" "+l.locality+" "+l.title).toLowerCase();
   if(state.location&&!text.includes(state.location.toLowerCase()))return false;
-  if(state.type&&l.type!==state.type)return false;
+  if(state.type!=="all"&&l.type!==state.type)return false;
   if(state.bhk!=="all"&&(state.bhk==="4+"?Number(l.bhk)<4:String(l.bhk)!==state.bhk))return false;
-  if(Number(l.price)>state.budget)return false;
+  if(state.budget!=null&&Number(l.price)>state.budget)return false;
+  if(state.nearby){
+    if(l.source==="demo"||l.lat==null||l.lng==null)return false;
+    l.nearbyDistanceKm=distanceKm(state.nearby.lat,state.nearby.lng,Number(l.lat),Number(l.lng));
+    if(l.nearbyDistanceKm>state.nearby.radiusKm)return false;
+  }
   const furnishing=qa("#furnishing input:checked").map(x=>x.value);
   if(furnishing.length&&!furnishing.includes(l.furnishing))return false;
   const amenities=qa("#amenities input:checked").map(x=>x.value);
@@ -73,7 +84,7 @@ function card(l){
     : '<div class="photo-placeholder" aria-hidden="true">⌂</div>';
   const facts=[l.bhk?Number(l.bhk)+" BHK":null,l.area?Number(l.area).toLocaleString("en-IN")+" sq.ft":null,l.locality]
     .filter(Boolean).map(authEscape).join(" · ");
-  const place=[l.city,l.distance].filter(Boolean).map(authEscape).join(" · ");
+  const place=[l.city,state.nearby&&Number.isFinite(l.nearbyDistanceKm)?l.nearbyDistanceKm.toFixed(1)+" km away":l.distance].filter(Boolean).map(authEscape).join(" · ");
   const score=Number(l.score)>0
     ? '<div class="score"><span>★ '+Number(l.score).toFixed(1)+'</span><small>'+(isDemo?"Sample score":"Flat Finder score")+'</small></div>'
     : "";
@@ -113,7 +124,11 @@ function render(){
   q("#count").textContent=rows.length.toLocaleString("en-IN");
   q("#context").textContent=(state.city==="all"?"Across India":state.city)+" · "+(state.purpose==="rent"?"Rent":"Buy")+(state.source==="all"?"":" · "+(portalLabels[state.source]||state.source));
   q("#budgetLabel").textContent=state.purpose==="rent"?"monthly rent":"maximum sale price";
-  q("#budgetValue").textContent=money(state.budget);
+  q("#budgetValue").textContent=state.budget==null?"Any budget":money(state.budget);
+  if(q("#nearbyStatus")&&state.nearby)q("#nearbyStatus").textContent="Showing properties within "+state.nearby.radiusKm+" km. Your exact location is used for this search only.";
+  if(q("#nearbyButton"))q("#nearbyButton").textContent=state.nearby?"Refresh nearby homes":"Find homes near me"; 
+  if(q("#clearNearby"))q("#clearNearby").hidden=!state.nearby;
+  if(q("#dataStatus"))q("#dataStatus").textContent="Showing "+rows.length.toLocaleString("en-IN")+" matches from "+listings.length.toLocaleString("en-IN")+" available records. Sample records are labelled; live portal feeds and approved owner listings appear only when supplied and approved.";
   q("#cards").innerHTML=rows.length?rows.map(card).join(""):"<div class=\"empty\"><div>⌂</div><h3>No homes match these filters.</h3><p>Try a wider budget, another city or another listing source.</p><button class=\"primary\" id=\"emptyReset\">Reset filters</button></div>";
   qa("[data-save]").forEach(b=>b.onclick=()=>toggleSave(b.dataset.save));
   qa("[data-detail]").forEach(b=>b.onclick=()=>openDetail(b.dataset.detail));
@@ -146,6 +161,98 @@ function updateMap(rows){
     }));
   source.setData({type:"FeatureCollection",features});
 }
+function radiusFeature(lat,lng,radiusKm){
+  const coordinates=[];
+  const earthKm=6371,lat1=lat*Math.PI/180,lng1=lng*Math.PI/180,angular=radiusKm/earthKm;
+  for(let i=0;i<=64;i++){
+    const bearing=i*2*Math.PI/64;
+    const lat2=Math.asin(Math.sin(lat1)*Math.cos(angular)+Math.cos(lat1)*Math.sin(angular)*Math.cos(bearing));
+    const lng2=lng1+Math.atan2(Math.sin(bearing)*Math.sin(angular)*Math.cos(lat1),Math.cos(angular)-Math.sin(lat1)*Math.sin(lat2));
+    coordinates.push([lng2*180/Math.PI,lat2*180/Math.PI]);
+  }
+  return {type:"Feature",properties:{radiusKm},geometry:{type:"Polygon",coordinates:[coordinates]}};
+}
+function showNearbyRadius(){
+  const source=map?.getSource("nearby-radius");
+  if(!source||!state.nearby)return;
+  source.setData({type:"FeatureCollection",features:[radiusFeature(state.nearby.lat,state.nearby.lng,state.nearby.radiusKm)]});
+  const zoom=state.nearby.radiusKm<=1?14:state.nearby.radiusKm<=3?13:state.nearby.radiusKm<=5?12.4:state.nearby.radiusKm<=10?11.5:10.5;
+  map.easeTo({center:[state.nearby.lng,state.nearby.lat],zoom,duration:650});
+}
+function clearNearbySearch(){
+  state.nearby=null;
+  const source=map?.getSource("nearby-radius");
+  if(source)source.setData({type:"FeatureCollection",features:[]});
+  if(q("#nearbyStatus"))q("#nearbyStatus").textContent="Premium GPS search is exclusive to the Pro plan. Choose a radius and tap Find homes near me; your location is used only for this search.";
+  render();
+}
+function setNearbyStatus(message,isError=false){
+  const el=q("#nearbyStatus");
+  if(!el)return;
+  el.textContent=message;
+  el.classList.toggle("error",Boolean(isError));
+}
+async function startNearbySearch(){
+  if(!authUser){showAuthForm("signin","Sign in to use Pro GPS radius search.");return;}
+  const button=q("#nearbyButton");
+  const radiusKm=Number(q("#nearbyRadius").value)||5;
+  button.disabled=true;button.textContent="Checking Pro membership…";
+  setNearbyStatus("Checking your Pro membership…");
+  try{
+    const {data:usageData,error:usageError}=await authClient.rpc("get_my_contact_usage");
+    if(usageError)throw usageError;
+    const usage=Array.isArray(usageData)?usageData[0]:usageData;
+    if(usage?.plan_id!=="pro"||Number(usage?.contacts_limit)<=0){
+      button.disabled=false;button.textContent="Find homes near me";
+      openPlans(null,"Premium GPS radius search is a Pro-only feature. Upgrade to Pro to search around your current location.");
+      return;
+    }
+    if(!navigator.geolocation)throw new Error("Location is not available in this browser.");
+    button.textContent="Getting your location…";
+    setNearbyStatus("Allow location access when your browser asks. Your exact location is not saved.");
+    const position=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{
+      enableHighAccuracy:true,timeout:15000,maximumAge:60000
+    }));
+    const lat=Number(position.coords.latitude),lng=Number(position.coords.longitude);
+    if(!Number.isFinite(lat)||!Number.isFinite(lng))throw new Error("Your browser returned an invalid location.");
+    button.textContent="Finding nearby homes…";
+    const {data,error}=await authClient.rpc("search_nearby_listings",{
+      p_latitude:lat,p_longitude:lng,p_radius_km:radiusKm,p_limit:500
+    });
+    if(error)throw error;
+    const live=(data||[]).map(item=>({
+      id:item.id,source:"flatfinder",city:item.city,locality:item.locality||item.city,title:item.title,
+      purpose:item.purpose,type:propertyType(item.property_type),bhk:Number(item.bedrooms)||null,
+      bath:Number(item.bathrooms)||0,area:Number(item.area_sqft)||0,
+      price:item.purpose==="rent"?Number(item.rent_inr||0):Number(item.sale_price_inr||0),
+      deposit:0,furnishing:item.furnishing||"",amenities:item.amenities||[],score:0,
+      lat:Number(item.lat),lng:Number(item.lng),image:"",
+      tag:item.verification_status==="verified"?"Verified owner listing":"Approved member listing",
+      distance:(Number(item.distance_m)/1000).toFixed(1)+" km away",
+      distanceKm:Number(item.distance_m)/1000
+    }));
+    const merged=new Map(listings.map(item=>[String(item.id),item]));
+    for(const item of live)merged.set(String(item.id),item);
+    listings=[...merged.values()];
+    state.nearby={lat,lng,radiusKm};
+    render();
+    showNearbyRadius();
+    const count=listings.filter(matches).length;
+    setNearbyStatus(count+" properties match this "+radiusKm+" km radius and your current filters. Only approved properties with usable map coordinates can appear.");
+  }catch(error){
+    const message=error?.code===1?"Location permission was denied. Allow location access in your browser settings and try again."
+      :error?.code===2?"Your device could not determine its location. Check GPS/location services and retry."
+      :error?.code===3?"The location request timed out. Try again."
+      :(error?.message||"Nearby search failed. Please try again.");
+    setNearbyStatus(message,true);
+    if(String(error?.message||"").includes("PREMIUM_PLAN_REQUIRED")){
+      openPlans(null,"Premium GPS radius search is available with Pro membership.");
+    }
+  }finally{
+    button.disabled=false;
+    if(!state.nearby)button.textContent="Find homes near me";
+  }
+}
 function initMap(){
   map=new maplibregl.Map({
     container:"map",
@@ -156,6 +263,9 @@ function initMap(){
   });
   map.addControl(new maplibregl.NavigationControl({showCompass:false}),"bottom-right");
   map.on("load",()=>{
+    map.addSource("nearby-radius",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+    map.addLayer({id:"nearby-radius-fill",type:"fill",source:"nearby-radius",paint:{"fill-color":"#0f9b91","fill-opacity":0.09}});
+    map.addLayer({id:"nearby-radius-line",type:"line",source:"nearby-radius",paint:{"line-color":"#0f766e","line-width":2,"line-dasharray":[2,2]}});
     map.addSource("homes",{type:"geojson",data:{type:"FeatureCollection",features:[]},cluster:true,clusterMaxZoom:13,clusterRadius:52});
     map.addLayer({id:"home-clusters",type:"circle",source:"homes",filter:["has","point_count"],paint:{
       "circle-color":"#0f766e",
@@ -279,19 +389,21 @@ async function openDetail(id){
 }
 
 
-qa(".seg button").forEach(b=>b.onclick=()=>{qa(".seg button").forEach(x=>x.classList.remove("on"));b.classList.add("on");state.purpose=b.dataset.purpose;state.budget=state.purpose==="rent"?50000:15000000;q("#budget").max=state.purpose==="rent"?100000:50000000;q("#budget").value=state.budget;render()});
+qa(".seg button").forEach(b=>b.onclick=()=>{qa(".seg button").forEach(x=>x.classList.remove("on"));b.classList.add("on");state.purpose=b.dataset.purpose;state.budget=null;q("#budget").max=state.purpose==="rent"?100000:50000000;q("#budget").value=state.purpose==="rent"?50000:15000000;render()});
 q("#city").onchange=e=>{state.city=e.target.value;render()};
 q("#source").onchange=e=>{state.source=e.target.value;render()};
 q("#location").oninput=e=>{state.location=e.target.value.trim();render()};
 q("#budget").oninput=e=>{state.budget=Number(e.target.value);render()};
+q("#nearbyButton").onclick=startNearbySearch;
+q("#clearNearby").onclick=clearNearbySearch;
 q("#sort").onchange=e=>{state.sort=e.target.value;render()};
 q("#searchBtn").onclick=()=>{state.location=q("#location").value.trim();render()};
 q("#apply").onclick=render;
 q("#reset").onclick=()=>{
-  state.city="all";state.location="";state.type="Apartment";state.bhk="all";state.source="all";
-  state.budget=state.purpose==="rent"?50000:15000000;
+  state.city="all";state.location="";state.type="all";state.bhk="all";state.source="all";
+  state.budget=null;
   q("#city").value="all";q("#source").value="all";q("#location").value="";
-  q("#budget").max=state.purpose==="rent"?100000:50000000;q("#budget").value=state.budget;
+  q("#budget").max=state.purpose==="rent"?100000:50000000;q("#budget").value=state.purpose==="rent"?50000:15000000;
   qa(".checks input").forEach(x=>x.checked=false);renderChips();render();
 };
 q("#closeModal").onclick=()=>q("#modal").hidden=true;q("#modal").onclick=e=>{if(e.target.id==="modal")q("#modal").hidden=true};
@@ -436,17 +548,31 @@ q("#savedCount").textContent=state.saved.size;renderChips();initMap();
 async function loadApprovedListings(){
   if(!authClient)return;
   try{
-    const {data,error}=await authClient.from("listing_explore").select("*").limit(100);
-    if(error||!data?.length)return;
-    const approved=data.map(item=>({
+    const pageSize=500;
+    const all=[];
+    for(let offset=0;;offset+=pageSize){
+      const {data,error}=await authClient.from("listing_explore").select("*")
+        .order("created_at",{ascending:false}).range(offset,offset+pageSize-1);
+      if(error)throw error;
+      const page=data||[];
+      all.push(...page);
+      if(page.length<pageSize)break;
+    }
+    const approved=all.map(item=>({
       id:item.id,source:"flatfinder",city:item.city,locality:item.locality||item.city,title:item.title,purpose:item.purpose,
-      type:propertyType(item.property_type),bhk:Number(item.bedrooms)||null,bath:0,area:Number(item.area_sqft||0),
+      type:propertyType(item.property_type),bhk:Number(item.bedrooms)||null,bath:Number(item.bathrooms)||0,area:Number(item.area_sqft||0),
       price:item.purpose==="rent"?Number(item.rent_inr||0):Number(item.sale_price_inr||0),
-      deposit:0,furnishing:"",amenities:[],score:0,lat:null,lng:null,image:"",tag:"Approved member listing",distance:""
+      deposit:0,furnishing:item.furnishing||"",amenities:item.amenities||[],score:0,lat:null,lng:null,image:"",
+      tag:item.verification_status==="verified"?"Verified owner listing":"Approved member listing",distance:"",featured:Boolean(item.is_featured)
     }));
-    listings=[...listings.filter(item=>item.source!=="flatfinder"),...approved];
+    const merged=new Map(listings.map(item=>[String(item.id),item]));
+    for(const item of approved)merged.set(String(item.id),item);
+    listings=[...merged.values()];
     render();
-  }catch(error){console.warn("Approved listings could not be loaded:",error);}
+  }catch(error){
+    console.warn("Approved listings could not be loaded:",error);
+    if(q("#dataStatus"))q("#dataStatus").textContent="Some approved member listings could not be loaded: "+(error?.message||"Unknown data error");
+  }
 }
 async function loadResearchCityCount(){
   try{
