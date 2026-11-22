@@ -26,17 +26,22 @@ def stats(values):
 
 
 def listing_stats(project):
-    """{bhk: {"buy": stats, "rent": stats, "psf": median price per sq ft}} from the sample listings."""
+    """Per-BHK buy/rent medians, including source counts for transparent attribution."""
     out = defaultdict(dict)
     for kind, key in (("buy", "sale_listings"), ("rent", "rent_listings")):
         by = defaultdict(list)
-        for l in project.get(key) or []:
-            if l.get("bhk") and l.get("price"):
-                by[l["bhk"]].append(l)
-        for bhk, ls in by.items():
-            out[bhk][kind] = stats(l["price"] for l in ls)
+        for listing in project.get(key) or []:
+            if listing.get("bhk") and listing.get("price"):
+                by[listing["bhk"]].append(listing)
+        for bhk, listings in by.items():
+            cell = stats(listing["price"] for listing in listings)
+            source_counts = defaultdict(int)
+            for listing in listings:
+                source_counts[listing.get("source") or "magicbricks"] += 1
+            cell["source_counts"] = dict(sorted(source_counts.items()))
+            out[bhk][kind] = cell
             if kind == "buy":
-                psf = [l["psf"] for l in ls if l.get("psf")]
+                psf = [listing["psf"] for listing in listings if listing.get("psf")]
                 if psf:
                     out[bhk]["psf"] = round(statistics.median(psf))
     return dict(out)
