@@ -278,9 +278,7 @@ async function openDetail(id){
   q("#modal").hidden=false;q("#closeDetail").onclick=()=>q("#modal").hidden=true;
 }
 
-let map;
-function updateMap(rows){if(!map)return;qa(".map-marker").forEach(x=>x.remove());rows.filter(l=>Number.isFinite(l.lat)&&Number.isFinite(l.lng)).forEach(l=>{var el=document.createElement("button");el.className="map-marker";el.textContent=l.purpose==="rent"?money(l.price):money(l.price).replace("₹","₹");el.title=l.title;el.onclick=()=>{map.flyTo({center:[l.lng,l.lat],zoom:13});openDetail(l.id)};new maplibregl.Marker({element:el}).setLngLat([l.lng,l.lat]).addTo(map)})}
-function initMap(){map=new maplibregl.Map({container:"map",style:import.meta.env.VITE_MAP_STYLE_URL||"https://tiles.openfreemap.org/styles/bright",center:[78.9629,22.5937],zoom:4.5});map.addControl(new maplibregl.NavigationControl({showCompass:false}),"bottom-right");map.on("load",render)}
+
 qa(".seg button").forEach(b=>b.onclick=()=>{qa(".seg button").forEach(x=>x.classList.remove("on"));b.classList.add("on");state.purpose=b.dataset.purpose;state.budget=state.purpose==="rent"?50000:15000000;q("#budget").max=state.purpose==="rent"?100000:50000000;q("#budget").value=state.budget;render()});
 q("#city").onchange=e=>{state.city=e.target.value;render()};
 q("#source").onchange=e=>{state.source=e.target.value;render()};
