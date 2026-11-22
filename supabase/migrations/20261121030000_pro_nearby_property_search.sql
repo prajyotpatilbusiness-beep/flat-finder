@@ -1,4 +1,41 @@
 -- Premium radius discovery is exclusive to the Pro subscription.
+
+-- Public Explore exposes only the safe fields needed for property cards and filters.
+grant select (
+  bathrooms, furnishing, amenities, verification_status, is_featured, available_from, created_at
+) on table public.listings to anon, authenticated;
+
+drop view if exists public.listing_explore;
+create view public.listing_explore
+with (security_invoker = true)
+as
+select
+  id,
+  title,
+  purpose,
+  property_type,
+  bedrooms,
+  bathrooms,
+  city,
+  state,
+  locality,
+  area_sqft,
+  furnishing,
+  amenities,
+  rent_inr,
+  sale_price_inr,
+  verification_status,
+  is_featured,
+  available_from,
+  created_at
+from public.listings
+where status = 'approved'
+  and is_active = true
+  and (expires_at is null or expires_at > now());
+
+grant select on public.listing_explore to anon, authenticated;
+
+
 -- Exact user coordinates are provided by the browser after an explicit click and are not stored.
 create or replace function public.search_nearby_listings(
   p_latitude double precision,
