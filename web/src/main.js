@@ -5,6 +5,7 @@ import { addBaseLayers, addSocietyLayers, addSocietyShapes, BASE_MODES, createMa
 import { searchSocieties } from './search.js';
 import { createFeed } from './feed.js';
 import { AMENITY_KEYS, DEFAULT_CRITERIA, NEAR, RANK, feetLabel, formatINR, matchSociety, matchUnit, priceFor, roomPasses } from './filters.js';
+import { cityIdFromSearch, normalizeCityId } from "./city-routing.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -28,15 +29,16 @@ const DIVY = { // Divy's own Gurugram search, shown as the example
 const STATE_LABEL = { match: 'Matches your search', likely: 'Likely match', probable: 'Probably fits (estimated)', unknown: 'Not checked yet', no: 'Does not match' };
 
 let crit = structuredClone(DEFAULT_CRITERIA);
-let baseMode = BASE_MODES.includes(params.get('map')) ? params.get('map') : 'streets';
+let baseMode = BASE_MODES.includes(params.get('map')) ? params.get('map') : 'light';
 let roomMode = 'off', areaUnit = 'gaj', sortBy = 'best';
 let data, byId, map, feed, selected = null, states = new Map(), tourTimer = null, cityId = 'gurgaon', details = null;
 let myList = [], allAmenities = [];
 const highlights = { glow: true, bounds: true, labels: true, ...store.get('ff-highlights', {}) };
 
 async function boot() {
-  const cities = await fetch('/data/cities.json').then((r) => r.json()).catch(() => ({ gurgaon: { name: 'Gurugram' } }));
-  cityId = cities[params.get('city')] ? params.get('city') : 'gurgaon';
+  const cities = await fetch('/data/cities.json').then((r) => r.json()).catch(() => ({ pune: { name: 'Pune' } }));
+  const requestedCityId = cityIdFromSearch(location.search);
+  cityId = cities[requestedCityId] ? requestedCityId : (cities.pune ? 'pune' : Object.keys(cities)[0]);
   const city = await fetch(`/data/${cityId}-map.json`)
     .then((r) => { if (!r.ok) throw new Error('Optimised city index is not published yet.'); return r.json(); })
     .catch(() => fetch(`/data/${cityId}.json`).then((r) => r.json()));
@@ -45,7 +47,22 @@ async function boot() {
   OVERVIEW.zoom = city.city.zoom || OVERVIEW.zoom;
   byId = new Map(city.societies.map((s) => [s.id, s]));
   $('city-pick').replaceChildren(...Object.entries(cities).map(([id, c]) => new Option(c.name, id, false, id === cityId)));
-  $('city-pick').onchange = () => { const next = new URLSearchParams(location.search); next.set('city', $('city-pick').value); location.search = next.toString(); };
+  $('map-title').textContent = `${city.city.name} residential map`;
+  $('map-count').textContent = `${Number(city.counts?.on_map || 0).toLocaleString('en-IN')} mapped societies`;
+  document.title = `${city.city.name} residential map | Flat Finder`;
+  const description = document.querySelector('meta[name="description"]');
+  if (description) description.content = `Explore ${city.city.name} housing societies by budget, bedroom size, amenities and nearby places.`;
+  $('city-pick').onchange = () => {
+    const nextCityId = normalizeCityId($('city-pick').value);
+    if (!nextCityId) return;
+    if (window.parent !== window) window.parent.postMessage({ type: 'flat-finder:city-change', cityId: nextCityId }, location.origin);
+    const next = new URLSearchParams(location.search); next.set('city', nextCityId); location.search = next.toString();
+  };
+  window.addEventListener('message', (event) => {
+    if (event.origin !== location.origin || event.source !== window.parent || event.data?.type !== 'flat-finder:set-city') return;
+    const nextCityId = normalizeCityId(event.data.cityId);
+    if (nextCityId && nextCityId !== cityId) { const next = new URLSearchParams(location.search); next.set('city', nextCityId); location.search = next.toString(); }
+  });
 
   const freq = new Map();
   for (const s of city.societies) for (const a of s.amenities) freq.set(a, (freq.get(a) || 0) + 1);
@@ -89,8 +106,11 @@ async function boot() {
   try {
     map = createMap('map', { mobile });
     window.__map = map; // handy for debugging in the console
+    map.once('load', () => { if ($('map-loading')) $('map-loading').hidden = true; });
+    window.addEventListener('resize', () => requestAnimationFrame(() => map?.resize()));
   } catch {
-    $('note').textContent = 'Your browser could not start WebGL, so the 3D map is off. Filters and results still work.';
+    $('note').textContent = 'Your browser could not start WebGL, so the interactive map is unavailable. Filters and results still work.';
+    if ($('map-loading')) { $('map-loading').hidden = false; $('map-loading').textContent = 'Map unavailable in this browser'; }
     applyFilters();
     feed.ambient();
     return;
@@ -372,6 +392,9 @@ function renderResults() {
 
 function resultItem(s) {
   const li = document.createElement('li');
+  li.tabIndex = 0;
+  li.setAttribute('role', 'button');
+  li.setAttribute('aria-label', `Open ${s.name}, ${s.locality || s.kind || 'housing society'}`);
   const st = states.get(s.id);
   const p = priceFor(s, crit.mode, crit.bhk);
   const money = p ? `${p.estimated ? '~' : ''}${formatINR(p.value)}${crit.mode === 'rent' ? '/mo' : ''}` : '';
@@ -379,6 +402,7 @@ function resultItem(s) {
   li.innerHTML = `<span class="nm">${myList.includes(s.id) ? '★ ' : ''}${esc(s.name)}<small>${esc(s.locality || '')}${how}</small></span>
     <span class="tag ${st}">${money}${s.score != null ? `<small>score ${s.score}</small>` : ''}</span>`;
   li.onclick = () => { stopTour(); openSociety(s.id); };
+  li.onkeydown = (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); li.click(); } };
   return li;
 }
 
@@ -771,4 +795,9 @@ function tour() {
 }
 addEventListener('keydown', (e) => { if (e.key === 'Escape') stopTour(); });
 
-boot().catch((e) => { console.error(e); document.title = 'ERR ' + e.message; });
+boot().catch((e) => {
+  console.error(e);
+  document.title = 'Map unavailable | Flat Finder';
+  const loading = $('map-loading');
+  if (loading) { loading.hidden = false; loading.textContent = 'City data could not be loaded. Refresh the page to try again.'; }
+});

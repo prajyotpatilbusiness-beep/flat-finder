@@ -1,3 +1,4 @@
+@import url("./design-tokens.css");
 :root{color-scheme:light;--shell-ink:#17182a;--shell-muted:#77798c;--shell-line:#e9e7f0;--shell-purple:#0f766e;--shell-bg:#f7f6fb}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
@@ -173,4 +174,61 @@ body{display:flex;flex-direction:column;min-height:100%;overflow:hidden;backgrou
 @media(max-width:740px){
  .shell-install-button{min-height:34px;padding:7px 8px;font-size:9px}
  .pwa-help-card{padding:24px 18px 18px}
+}
+
+/* Shared premium interface system */
+:root {
+  --shell-ink: var(--ff-text);
+  --shell-muted: var(--ff-muted);
+  --shell-line: var(--ff-border);
+  --shell-purple: var(--ff-primary);
+  --shell-bg: var(--ff-background);
+}
+body { background: var(--ff-background); color: var(--ff-text); font-family: var(--ff-font-body); }
+.shell-header { min-height: 68px; flex-basis: 68px; padding-inline: clamp(16px, 3vw, 40px); gap: clamp(14px, 2vw, 28px); box-shadow: 0 2px 12px rgba(23,43,58,.04); }
+.shell-mark { background: var(--ff-primary); box-shadow: none; }
+.shell-brand-copy strong { font-family: var(--ff-font-heading); }
+.shell-tabs { border-color: var(--ff-border); border-radius: 12px; background: var(--ff-background); }
+.shell-tab { min-height: 40px; border-radius: 9px; transition: background-color .16s ease, color .16s ease, border-color .16s ease; }
+.shell-tab:hover { color: var(--ff-primary-hover); background: var(--ff-secondary); }
+.shell-tab.active { border-color: #bddbd4; background: #fff; color: var(--ff-primary); box-shadow: 0 1px 4px rgba(23,43,58,.06); }
+.shell-auth-button { background: var(--ff-primary); border-color: var(--ff-primary); box-shadow: none; }
+.shell-auth-button:hover { background: var(--ff-primary-hover); }
+.shell-mobile-menu { display: none; min-height: 38px; padding: 7px 12px; border: 1px solid var(--ff-border); border-radius: 10px; background: #fff; color: var(--ff-text); font: 700 12px var(--ff-font-body); cursor: pointer; }
+.auth-gate { background: rgba(247,248,246,.40); }
+.auth-gate-card { border-color: var(--ff-border); box-shadow: 0 18px 55px rgba(23,43,58,.12); }
+.auth-gate-mark { background: var(--ff-primary); box-shadow: none; }
+.auth-gate-card h1, .auth-gate-card h2 { color: var(--ff-text); font-family: var(--ff-font-heading); }
+.auth-gate-primary { background: var(--ff-primary); box-shadow: none; }
+.auth-gate-primary:hover { background: var(--ff-primary-hover); }
+.auth-gate-secondary { color: var(--ff-text); }
+.account-dialog { border-color: var(--ff-border); border-radius: 20px; box-shadow: 0 24px 72px rgba(23,43,58,.18); }
+.account-dialog-head { background: #fff; }
+.account-dialog-avatar { background: var(--ff-primary); box-shadow: none; }
+.account-nav { background: var(--ff-background); }
+.account-nav>button.active { border-color: #c9e3dc; background: var(--ff-secondary); color: var(--ff-primary); }
+.account-close { border-color: var(--ff-border); color: var(--ff-muted); }
+.account-layer { background: rgba(23,43,58,.36); }
+.shell-header button:focus-visible, .shell-header a:focus-visible, .auth-gate button:focus-visible, .account-layer button:focus-visible, .account-layer a:focus-visible, .account-layer input:focus-visible { outline: 2px solid var(--ff-primary); outline-offset: 3px; }
+@media (max-width: 740px) {
+  .shell-header { position: relative; overflow: visible; min-height: 58px; flex-basis: 58px; height: 58px; padding: 0 12px; gap: 8px; }
+  .shell-brand { flex: 1 1 auto; }
+  .shell-auth-button { min-height: 38px; padding: 6px 10px; font-size: 11px; }
+  .shell-mobile-menu { display: inline-flex; align-items: center; justify-content: center; }
+  .shell-tabs { display: none !important; }
+  .shell-header.mobile-nav-open .shell-tabs { position: absolute; top: calc(100% + 7px); right: 10px; z-index: 100; display: grid !important; width: min(300px, calc(100vw - 20px)); padding: 8px; gap: 4px; background: #fff; box-shadow: var(--ff-shadow); }
+  .shell-header.mobile-nav-open .shell-tab { justify-content: flex-start; min-height: 44px; padding-inline: 12px; }
+  .shell-main { height: calc(100dvh - 58px); }
+  .account-layer { padding: 10px; }
+  .account-dialog { max-height: calc(100dvh - 20px); }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+
+@media (max-width: 1000px) and (min-width: 741px) {
+  .shell-header { gap: 12px; padding-inline: 14px; }
+  .shell-brand { min-width: 180px; }
+  .shell-message { display: none; }
+  .shell-tabs { gap: 2px; padding: 3px; }
+  .shell-tab { gap: 5px; min-height: 38px; padding: 7px 10px; font-size: 11px; }
+  .shell-auth-button { padding-inline: 11px; }
 }

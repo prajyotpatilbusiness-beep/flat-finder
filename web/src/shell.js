@@ -1,4 +1,5 @@
 import { authClient, authConfigured } from "./auth.js";
+import { cityIdFromSearch, normalizeCityId, withCityParam } from "./city-routing.js";
 
 (() => {
   const tabs = [...document.querySelectorAll("[data-tab]")];
@@ -34,6 +35,7 @@ import { authClient, authConfigured } from "./auth.js";
   const accountSubtitle = document.getElementById("account-subtitle");
   let signedIn = false;
   let activeView = "homes";
+  let selectedCityId = cityIdFromSearch(location.search);
   let currentUser = null;
   let currentProfile = null;
   let currentAccountTab = "overview";
@@ -75,7 +77,7 @@ import { authClient, authConfigured } from "./auth.js";
     }
     const frame = frames[name];
     // Do not load application pages or their data until a valid signed-in session exists.
-    if (signedIn && frame && !frame.hasAttribute("src") && frame.dataset.src) frame.src = frame.dataset.src;
+    if (signedIn && frame && !frame.hasAttribute("src") && frame.dataset.src) frame.src = withCityParam(frame.dataset.src, selectedCityId);
     if (frame) {
       try {
         const win = frame.contentWindow;
@@ -83,6 +85,27 @@ import { authClient, authConfigured } from "./auth.js";
       } catch {}
     }
     if (updateHash) history.replaceState(null, "", location.pathname + location.search + (name === "homes" ? "#homes" : name === "plans" ? "#plans" : "#research"));
+  }
+
+
+  function setSelectedCity(value, sourceKey = null) {
+    const cityId = normalizeCityId(value);
+    if (!cityId) return;
+    selectedCityId = cityId;
+    const next = new URL(location.href);
+    next.searchParams.set("city", cityId);
+    history.replaceState(null, "", next.pathname + next.search + next.hash);
+
+    if (!signedIn) return;
+    if (sourceKey !== "research" && frames.research?.dataset.src) {
+      const desired = withCityParam(frames.research.dataset.src, cityId);
+      if (frames.research.hasAttribute("src") && new URL(frames.research.src).pathname + new URL(frames.research.src).search !== desired) {
+        frames.research.src = desired;
+      }
+    }
+    if (sourceKey !== "homes" && frames.homes?.contentWindow && frames.homes.hasAttribute("src")) {
+      frames.homes.contentWindow.postMessage({ type: "flat-finder:set-city", cityId }, location.origin);
+    }
   }
 
   function syncAccountButton() {
@@ -647,6 +670,10 @@ import { authClient, authConfigured } from "./auth.js";
 
   window.addEventListener("message", (event) => {
     if (event.origin !== location.origin) return;
+    const sourceKey = Object.keys(frames).find((key) => event.source === frames[key]?.contentWindow);
+    if (sourceKey && event.data?.type === "flat-finder:city-change" && (sourceKey === "homes" || sourceKey === "research")) {
+      setSelectedCity(event.data.cityId, sourceKey);
+    }
     if (event.source === frames.homes?.contentWindow) {
       if (event.data?.type === "flat-finder:auth-state") {
         authClient?.auth.getSession()
@@ -691,7 +718,17 @@ import { authClient, authConfigured } from "./auth.js";
     setLocked(true);
   }
 
-  tabs.forEach((tab) => tab.addEventListener("click", () => activate(tab.dataset.tab)));
+  tabs.forEach((tab) => tab.addEventListener("click", () => {
+    activate(tab.dataset.tab);
+    document.querySelector(".shell-header")?.classList.remove("mobile-nav-open");
+    document.getElementById("shell-mobile-menu")?.setAttribute("aria-expanded", "false");
+  }));
+  const mobileMenu = document.getElementById("shell-mobile-menu");
+  mobileMenu?.addEventListener("click", () => {
+    const open = mobileMenu.getAttribute("aria-expanded") !== "true";
+    mobileMenu.setAttribute("aria-expanded", String(open));
+    document.querySelector(".shell-header")?.classList.toggle("mobile-nav-open", open);
+  });
   activeView = location.hash === "#research" ? "research" : location.hash === "#plans" ? "plans" : "homes";
   activate(activeView, { updateHash: false });
 

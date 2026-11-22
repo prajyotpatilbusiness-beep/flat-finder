@@ -4,18 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Flat Finder</title>
-  <meta name="description" content="Every housing society in Gurugram on one map. Filter by the smallest bedroom you can live with, buy or rent budget, amenities and what is nearby.">
+  <meta name="description" content="Explore housing societies by city, bedroom size, budget, amenities and nearby places.">
   <script>if(window.top===window)window.location.replace("/");</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div id="map"></div>
+  <div id="map" aria-label="Interactive housing society map"></div>
+  <div class="map-loading" id="map-loading" role="status" aria-live="polite">Loading city map...</div>
   <div class="map-hud" aria-label="Society map legend">
     <div class="map-hud-copy">
       <span class="kicker">SOCIETY INTELLIGENCE</span>
-      <strong>Gurugram residential map</strong>
-      <small>Building footprints · housing societies · evidence-led matches</small>
+      <strong id="map-title">Residential map</strong>
+      <small><span id="map-count">Citywide society data</span> | evidence-led matches</small>
     </div>
     <div class="map-legend" aria-label="Match status legend">
       <span><i class="match"></i>Match</span>

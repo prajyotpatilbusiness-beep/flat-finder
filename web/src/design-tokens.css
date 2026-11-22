@@ -1,0 +1,20 @@
+:root {
+  color-scheme: light;
+  --ff-primary: #0F766E;
+  --ff-primary-hover: #115E59;
+  --ff-secondary: #E7F4F1;
+  --ff-background: #F7F8F6;
+  --ff-card: #FFFFFF;
+  --ff-text: #172B3A;
+  --ff-muted: #687985;
+  --ff-border: #E3E9E6;
+  --ff-map: #F1F4F2;
+  --ff-water: #DCECF8;
+  --ff-park: #E2EEDD;
+  --ff-shadow: 0 12px 36px rgba(23, 43, 58, .08);
+  --ff-font-heading: "Manrope", sans-serif;
+  --ff-font-body: "DM Sans", sans-serif;
+  font-family: var(--ff-font-body);
+  color: var(--ff-text);
+  background: var(--ff-background);
+}

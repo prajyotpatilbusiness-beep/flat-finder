@@ -1,8 +1,8 @@
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-const COLORS = { match: '#0f8b83', likely: '#d49a43', probable: '#4d87b7', unknown: '#91a0b2', no: '#dbe4e8' };
-export const OVERVIEW = { center: [77.065, 28.425], zoom: 12.4, pitch: 50, bearing: 0 };
+const COLORS = { match: '#0F766E', likely: '#d49a43', probable: '#4d87b7', unknown: '#91a0b2', no: '#dbe4e8' };
+export const OVERVIEW = { center: [77.065, 28.425], zoom: 12.4, pitch: 0, bearing: 0 };
 
 const stateColor = (fallback) => ['case',
   ['boolean', ['feature-state', 'sel'], false], '#ffffff',
@@ -12,9 +12,9 @@ export function createMap(container, { mobile }) {
   const map = new maplibregl.Map({
     container,
     attributionControl: { compact: false },
-    center: mobile ? OVERVIEW.center : [77.065, 28.425],
-    zoom: mobile ? 11.6 : 12.4,
-    pitch: mobile ? 38 : 0,
+    center: OVERVIEW.center,
+    zoom: OVERVIEW.zoom,
+    pitch: 0,
     bearing: 0,
     maxPitch: 62,
     dragRotate: false,
@@ -31,9 +31,9 @@ export function createMap(container, { mobile }) {
         },
       },
       layers: [
-        { id: 'bg', type: 'background', paint: { 'background-color': '#f2f5fa' } },
+        { id: 'bg', type: 'background', paint: { 'background-color': '#F1F4F2' } },
         { id: 'water-bg', type: 'fill', source: 'omt', 'source-layer': 'water',
-          paint: { 'fill-color': '#dcecf8', 'fill-opacity': 1 } },
+          paint: { 'fill-color': '#DCECF8', 'fill-opacity': 1 } },
         { id: 'city', type: 'fill-extrusion', source: 'omt', 'source-layer': 'building', minzoom: 13.5,
           paint: {
             'fill-extrusion-color': '#c6d1df',
@@ -57,7 +57,7 @@ export function addSocietyLayers(map, shapes, points) {
     data: points,
     promoteId: 'sid',
     cluster: true,
-    clusterMaxZoom: 12.8,
+    clusterMaxZoom: 13,
     clusterRadius: 52,
   });
   map.addLayer({
@@ -184,16 +184,16 @@ export function addBaseLayers(map) {
 // Building colours per base map. Light needs darker "match" colours and pale "no" colours.
 const PALETTES = {
   night: { match: '#55d6c6', likely: '#efb56b', probable: '#8bb9e3', unknown: '#718198', no: '#28384e', sel: '#ffffff', city: '#2d4058', label: '#f3f7fc', halo: 'rgba(17,26,41,.95)' },
-  streets: { match: '#0f8b83', likely: '#d49a43', probable: '#4d87b7', unknown: '#91a0b2', no: '#dbe4e8', sel: '#ffffff', city: '#c6d1df', label: '#27364b', halo: 'rgba(255,255,255,.96)' },
-  light: { match: '#0f8b83', likely: '#d49a43', probable: '#4d87b7', unknown: '#91a0b2', no: '#dbe4e8', sel: '#ffffff', city: '#c6d1df', label: '#27364b', halo: 'rgba(255,255,255,.96)' },
+  streets: { match: '#0F766E', likely: '#d49a43', probable: '#4d87b7', unknown: '#91a0b2', no: '#dbe4e8', sel: '#ffffff', city: '#c6d1df', label: '#27364b', halo: 'rgba(255,255,255,.96)' },
+  light: { match: '#0F766E', likely: '#d49a43', probable: '#4d87b7', unknown: '#91a0b2', no: '#dbe4e8', sel: '#ffffff', city: '#c6d1df', label: '#27364b', halo: 'rgba(255,255,255,.96)' },
 };
 const LIGHT = {
-  'st-bg': { 'background-color': '#f2f5fa' }, 'st-green': { 'fill-color': '#e3f0e6' }, 'st-park': { 'fill-color': '#d9ecd9' },
+  'st-bg': { 'background-color': '#F1F4F2' }, 'st-green': { 'fill-color': '#E2EEDD' }, 'st-park': { 'fill-color': '#E2EEDD' },
   'st-water': { 'fill-color': '#dcecf8' }, 'st-casing': { 'line-color': '#c9d4e2' },
-  'st-road': { 'line-color': ['match', ['get', 'class'], ['motorway', 'trunk'], '#edbd72', ['primary', 'secondary'], '#ffffff', ['tertiary'], '#f9fbfd', '#f3f6fa'] },
+  'st-road': { 'line-color': ['match', ['get', 'class'], ['motorway', 'trunk'], '#edbd72', ['primary', 'secondary'], '#ffffff', ['tertiary'], '#ffffff', '#F1F4F2'] },
   'st-rail': { 'line-color': '#b8c3d2' },
   'lbl-road': { 'text-color': '#68778d', 'text-halo-color': '#ffffff' }, 'lbl-place': { 'text-color': '#34445d', 'text-halo-color': '#ffffff' },
-  'lbl-metro': { 'text-color': '#0f8b83', 'text-halo-color': '#ffffff' },
+  'lbl-metro': { 'text-color': '#0F766E', 'text-halo-color': '#ffffff' },
 };
 const DARK = {
   'st-bg': { 'background-color': '#111a29' }, 'st-green': { 'fill-color': '#1d342f' }, 'st-park': { 'fill-color': '#24453a' },
@@ -216,7 +216,7 @@ export function setBaseMode(map, mode) {
     for (const [key, value] of Object.entries(props)) map.setPaintProperty(id, key, value);
   }
   const c = PALETTES[mode];
-  map.setPaintProperty('bg', 'background-color', mode === 'night' ? '#111a29' : '#f2f5fa');
+  map.setPaintProperty('bg', 'background-color', mode === 'night' ? '#111a29' : '#F1F4F2');
   map.setPaintProperty('water-bg', 'fill-color', mode === 'night' ? '#1a3552' : '#dcecf8');
   map.setPaintProperty('city', 'fill-extrusion-color', c.city);
   for (const [id, prop] of [['bld', 'fill-extrusion-color'], ['site-fill', 'fill-color'], ['site-line', 'line-color'], ['glow', 'circle-color'], ['society-dot', 'circle-color']]) {
@@ -231,7 +231,7 @@ export function setBaseMode(map, mode) {
   map.setSky(mode === 'night'
     ? { 'sky-color': '#111a29', 'horizon-color': '#26354a', 'fog-color': '#111a29', 'sky-horizon-blend': 0.6,
         'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.2, 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 10, 0] }
-    : { 'sky-color': '#dce8f4', 'horizon-color': '#f3f6fa', 'fog-color': '#f2f5fa', 'sky-horizon-blend': 0.6,
+    : { 'sky-color': '#dce8f4', 'horizon-color': '#F1F4F2', 'fog-color': '#F1F4F2', 'sky-horizon-blend': 0.6,
         'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.2, 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 10, 0] });
 }
 

@@ -2,12 +2,14 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { authClient, authConfigured } from "./auth.js";
 import "./marketplace.css";
+import { cityIdFromSearch, cityNameForId, normalizeCityId } from "./city-routing.js";
 
 let listings=[];
 listings=listings.map(item=>({...item,source:item.source||"demo"}));
 
+const initialCityId=cityIdFromSearch(location.search);
 const state={
-  purpose:"rent",city:"Pune",location:"",type:"all",bhk:"all",
+  purpose:"rent",city:cityNameForId(initialCityId)||"Pune",location:"",type:"all",bhk:"all",
   budget:null,sort:"recommended",source:"all",nearby:null,
   mode:"campus",anchorId:"all",radiusKm:5,category:"all",activeTab:"home",
   saved:new Set(JSON.parse(localStorage.getItem("ff-saved")||"[]"))
@@ -64,7 +66,6 @@ async function loadPuneSearchPlaces(){
     updateModeControls();
     updateAnchorMap();
     render();
-    if(q("#modeSummary"))q("#modeSummary").textContent="Pune directory loaded: "+(directory.campuses||[]).length+" mapped colleges/universities and "+(directory.offices||[]).length+" office hubs. Select a place to see its radius.";
   }catch(error){console.info("Pune place catalogue unavailable:",error?.message||error);}
 }
 function activeAnchor(){
@@ -72,8 +73,9 @@ function activeAnchor(){
  return (searchAnchors[state.mode]||[]).find(item=>item.id===state.anchorId)||null;
 }
 function updateModeControls(){
- const anchors=searchAnchors[state.mode]||[];
- if(state.anchorId!=="all"&&!anchors.some(item=>item.id===state.anchorId))state.anchorId=anchors[0]?.id||"all";
+ let anchors=searchAnchors[state.mode]||[];
+ if(state.city!=="all")anchors=anchors.filter(item=>item.city===state.city);
+ if(state.anchorId!=="all"&&!anchors.some(item=>item.id===state.anchorId))state.anchorId="all";
  const select=q("#anchorSelect");
  select.innerHTML="<option value=\"all\">"+(state.city==="all"?"All India":"Citywide · "+authEscape(state.city))+"</option>"+anchors.map(item=>"<option value=\""+authEscape(item.id)+"\">"+authEscape(item.name)+" · "+authEscape(item.city)+"</option>").join("");
  select.value=state.anchorId;
@@ -102,6 +104,21 @@ const typeList=["all","Apartment","Independent House","Villa","Studio","PG / Co-
 const bhkList=["all","1","2","3","4+"];
 const portalLabels={"99acres":"99acres",nobroker:"NoBroker",housing:"Housing.com",magicbricks:"Magicbricks",flatfinder:"Flat Finder"};
 const cityNames={gurgaon:"Gurugram",bangalore:"Bengaluru",mumbai:"Mumbai",pune:"Pune"};
+// These centres and zoom levels mirror the published city map configurations.
+const cityMapViews={
+  pune:{center:[73.8567,18.5204],zoom:11.4},
+  bangalore:{center:[77.6,12.97],zoom:11.4},
+  gurgaon:{center:[77.065,28.425],zoom:12.4}
+};
+function notifyCityChange(value=state.city){
+  const cityId=normalizeCityId(value);
+  if(cityId&&window.parent!==window)window.parent.postMessage({type:"flat-finder:city-change",cityId},location.origin);
+}
+function moveMapToCity(){
+  const cityId=normalizeCityId(state.city);
+  const view=cityMapViews[cityId];
+  if(view&&map?.loaded())map.flyTo({center:view.center,zoom:view.zoom,duration:520});
+}
 const portalHosts={"99acres":["99acres.com","www.99acres.com"],nobroker:["nobroker.in","www.nobroker.in"],housing:["housing.com","www.housing.com"],magicbricks:["magicbricks.com","www.magicbricks.com"]};
 
 function safePortalUrl(value,source){
@@ -207,7 +224,7 @@ function render(){
   if(state.sort==="area")rows.sort((a,b)=>b.area-a.area);
   q("#count").textContent=rows.length.toLocaleString("en-IN");
   const anchor=activeAnchor();
-  q("#context").textContent=(anchor?anchor.city:"Across India")+" · "+(state.purpose==="rent"?"Rent":"Buy")+" · "+state.radiusKm+" km radius"+(state.activeTab==="saved"?" · Saved":"")+(state.source==="all"?"":" · "+(portalLabels[state.source]||state.source));
+  q("#context").textContent=(anchor?anchor.city:(state.city==="all"?"Across India":state.city))+" | "+(state.purpose==="rent"?"Rent":"Buy")+" · "+state.radiusKm+" km radius"+(state.activeTab==="saved"?" · Saved":"")+(state.source==="all"?"":" · "+(portalLabels[state.source]||state.source));
   q("#topNearbyTitle").textContent=state.activeTab==="saved"?"Your saved properties":anchor?"Top homes near "+anchor.name:(state.city==="all"?"Top homes across India":"Top homes across "+state.city);
   const propertyTitle=q("#propertySectionTitle");
   if(propertyTitle)propertyTitle.textContent=state.activeTab==="saved"?"Your saved properties":anchor?"Best picks near "+anchor.name:(state.city==="all"?"Homes across India":"Homes across "+state.city);
@@ -384,17 +401,17 @@ function initMap(){
   map=new maplibregl.Map({
     container:"map",
     style:import.meta.env.VITE_MAP_STYLE_URL||"https://tiles.openfreemap.org/styles/bright",
-    center:activeAnchor()?[activeAnchor().lng,activeAnchor().lat]:[78.9629,22.5937],
-    zoom:activeAnchor()?11.5:4.5,
+    center:activeAnchor()?[activeAnchor().lng,activeAnchor().lat]:(cityMapViews[normalizeCityId(state.city)]?.center||[78.9629,22.5937]),
+    zoom:activeAnchor()?11.5:(cityMapViews[normalizeCityId(state.city)]?.zoom||4.5),
     attributionControl:{compact:true}
   });
   map.addControl(new maplibregl.NavigationControl({showCompass:false}),"bottom-right");
   map.on("load",()=>{
     map.addSource("anchor-radius",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-    map.addLayer({id:"anchor-radius-fill",type:"fill",source:"anchor-radius",paint:{"fill-color":"#6842ee","fill-opacity":0.07}});
-    map.addLayer({id:"anchor-radius-line",type:"line",source:"anchor-radius",paint:{"line-color":"#6842ee","line-width":2,"line-dasharray":[2,2]}});
+    map.addLayer({id:"anchor-radius-fill",type:"fill",source:"anchor-radius",paint:{"fill-color":"#E7F4F1","fill-opacity":0.07}});
+    map.addLayer({id:"anchor-radius-line",type:"line",source:"anchor-radius",paint:{"line-color":"#0F766E","line-width":2,"line-dasharray":[2,2]}});
     map.addSource("anchor-origin",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-    map.addLayer({id:"anchor-origin-point",type:"circle",source:"anchor-origin",paint:{"circle-color":"#6842ee","circle-radius":10,"circle-stroke-color":"#ffffff","circle-stroke-width":4}});
+    map.addLayer({id:"anchor-origin-point",type:"circle",source:"anchor-origin",paint:{"circle-color":"#0F766E","circle-radius":10,"circle-stroke-color":"#ffffff","circle-stroke-width":4}});
     map.addSource("nearby-radius",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
     map.addLayer({id:"nearby-radius-fill",type:"fill",source:"nearby-radius",paint:{"fill-color":"#0f9b91","fill-opacity":0.09}});
     map.addLayer({id:"nearby-radius-line",type:"line",source:"nearby-radius",paint:{"line-color":"#0f766e","line-width":2,"line-dasharray":[2,2]}});
@@ -402,7 +419,7 @@ function initMap(){
     map.addLayer({id:"nearby-origin-point",type:"circle",source:"nearby-origin",paint:{"circle-color":"#2563eb","circle-radius":8,"circle-stroke-color":"#ffffff","circle-stroke-width":3}});
     map.addSource("homes",{type:"geojson",data:{type:"FeatureCollection",features:[]},cluster:true,clusterMaxZoom:13,clusterRadius:52});
     map.addLayer({id:"home-clusters",type:"circle",source:"homes",filter:["has","point_count"],paint:{
-      "circle-color":"#6842ee",
+      "circle-color":"#0F766E",
       "circle-radius":["step",["get","point_count"],15,25,19,100,25,500,31],
       "circle-stroke-color":"#ffffff","circle-stroke-width":2,"circle-opacity":0.94
     }});
@@ -410,7 +427,7 @@ function initMap(){
       "text-field":["get","point_count_abbreviated"],"text-font":["Noto Sans Bold"],"text-size":12
     },paint:{"text-color":"#ffffff"}});
     map.addLayer({id:"home-points",type:"circle",source:"homes",filter:["!",["has","point_count"]],paint:{
-      "circle-color":["match",["get","source"],"99acres","#f59e0b","nobroker","#2563eb","housing","#ef4444","flatfinder","#16a36c","#6842ee"],"circle-radius":7,"circle-stroke-color":"#ffffff","circle-stroke-width":2
+      "circle-color":"#0F766E","circle-radius":7,"circle-stroke-color":"#ffffff","circle-stroke-width":2
     }});
     map.addLayer({id:"home-labels",type:"symbol",source:"homes",minzoom:10.5,filter:["!",["has","point_count"]],layout:{
       "text-field":["get","priceLabel"],"text-font":["Noto Sans Bold"],"text-size":10,"text-offset":[0,1.3],"text-optional":true
@@ -538,7 +555,7 @@ q("#city").onchange=e=>{
   state.city=e.target.value;
   state.anchorId="all";
   state.nearby=null;
-  updateModeControls();render();
+  updateModeControls();moveMapToCity();render();notifyCityChange();
 };
 q("#source").onchange=e=>{state.source=e.target.value;render()};
 q("#location").oninput=e=>{state.location=e.target.value.trim();render()};
@@ -546,7 +563,7 @@ q("#budget").oninput=e=>{state.budget=Number(e.target.value);render()};
 q("#nearbyButton").onclick=startNearbySearch;
 q("#clearNearby").onclick=clearNearbySearch;
 qa("[data-mode]").forEach(button=>button.onclick=()=>{state.mode=button.dataset.mode;state.nearby=null;updateModeControls();render();});
-q("#anchorSelect").onchange=event=>{state.anchorId=event.target.value;state.nearby=null;updateModeControls();render();};
+q("#anchorSelect").onchange=event=>{state.anchorId=event.target.value;state.nearby=null;updateModeControls();moveMapToCity();render();notifyCityChange();};
 qa("[data-radius]").forEach(button=>button.onclick=()=>{state.radiusKm=Number(button.dataset.radius)||5;updateModeControls();render();});
 qa("[data-category]").forEach(button=>button.onclick=()=>{state.category=button.dataset.category;qa("[data-category]").forEach(item=>item.classList.toggle("active",item===button));render();});
 q("#openFilters").onclick=()=>q("#filtersPanel").classList.add("mobile-open");
@@ -570,6 +587,14 @@ q("#reset").onclick=()=>{
   updateModeControls();renderChips();render();q("#filtersPanel").classList.remove("mobile-open");
 };
 q("#closeModal").onclick=()=>q("#modal").hidden=true;q("#modal").onclick=e=>{if(e.target.id==="modal")q("#modal").hidden=true};
+window.addEventListener("message",event=>{
+  if(event.origin!==location.origin||event.source!==window.parent||event.data?.type!=="flat-finder:set-city")return;
+  const cityId=normalizeCityId(event.data.cityId);
+  const cityName=cityNameForId(cityId);
+  if(!cityId||!cityName||state.city===cityName)return;
+  state.city=cityName;state.anchorId="all";state.nearby=null;
+  q("#city").value=cityName;updateModeControls();moveMapToCity();render();
+});
 let authUser=null;
 let pendingDetailId=null;
 let phoneOtpNumber="";
