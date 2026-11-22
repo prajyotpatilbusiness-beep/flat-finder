@@ -120,6 +120,10 @@ jobs:
           pattern: ${{ inputs.city }}-projects-*
           path: pipeline/out/${{ inputs.city }}
           merge-multiple: true
+      - name: Import authorized 99acres and NoBroker feeds
+        env:
+          CITY: ${{ inputs.city }}
+        run: python pipeline/portal_import.py "$CITY"
       - name: Merge all project batches
         env:
           CITY: ${{ inputs.city }}
