@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_CRITERIA, feetLabel, matchSociety, roomPasses } from './filters.js';
+import { DEFAULT_CRITERIA, feetLabel, matchSociety, NEAR, roomPasses } from './filters.js';
 
 const ROOM = { a: 11.25, b: 12.25 }; // 11'3" x 12'3"
 const soc = (over = {}) => ({ kind: 'apartment', status: 'Ready To Move', amenities: [], amen_facts: {}, unit_types: [], ...over });
@@ -96,6 +96,15 @@ describe('room estimates, area mode, nearby, lists', () => {
     expect(matchSociety(s, crit({ q: 'golf' }))).toBe('match');
     expect(matchSociety(s, crit({ q: 'heritage' }))).toBe('no');
     expect(matchSociety(s, crit({ only: ['y'] }))).toBe('no');
+  });
+  it('filters colleges, universities, IT parks and offices using their configured distances', () => {
+    const s = soc({ nearby: { college: { m: 2500 }, university: { m: 4500 }, it_park: { m: 9000 }, office: { m: 3500 } } });
+    for (const kind of ['college', 'university', 'it_park']) expect(matchSociety(s, crit({ near: [kind] }))).toBe('match');
+    expect(matchSociety(s, crit({ near: ['office'] }))).toBe('no');
+    expect(NEAR.college.m).toBe(3000);
+    expect(NEAR.university.m).toBe(5000);
+    expect(NEAR.it_park.m).toBe(10000);
+    expect(NEAR.office.m).toBe(3000);
   });
   it('custom amenity names from the full list', () => {
     expect(matchSociety(soc({ amenities: ['Banquet Hall'] }), crit({ amenities: ['n:banquet hall'] }))).toBe('match');

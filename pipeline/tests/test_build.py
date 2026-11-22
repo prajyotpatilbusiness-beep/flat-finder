@@ -84,6 +84,18 @@ def test_city_bbox_excludes_missing_or_outside_coordinates():
     assert not build_city.inside_city_bbox({"lat": 18.52, "lng": 74.2}, bbox)
 
 
+def test_pune_project_bbox_keeps_outer_residential_records_without_changing_poi_bbox():
+    import json
+    from pathlib import Path
+
+    cities = json.loads((Path(__file__).parents[2] / "data" / "cities.json").read_text(encoding="utf-8"))
+    pune = cities["pune"]
+    assert pune["bbox"] == [18.35, 73.65, 18.72, 74.05]
+    assert pune["project_bbox"] == [18.35, 73.67, 18.75, 74.05]
+    assert build_city.inside_city_bbox({"lat": 18.74, "lng": 73.9}, pune["project_bbox"])
+    assert not build_city.inside_city_bbox({"lat": 18.74, "lng": 73.9}, pune["bbox"])
+
+
 def test_attach_portal_listings_only_when_society_and_locality_match():
     projects = [{
         "mb_id": "p1",

@@ -93,7 +93,7 @@ cd ../web && npm install && npm run dev
 
 Tests: `cd pipeline && uv run --with pytest pytest` and `cd web && npx vitest run --root .. cli web/src`.
 
-Cities live in `data/cities.json`. Gurugram and Bengaluru have research datasets; Mumbai and Pune are configured but their research datasets still need to be generated.
+Cities live in `data/cities.json`. Gurugram, Bengaluru and Pune have research datasets; Mumbai is configured but its research dataset still needs to be generated. Pune also includes a mapped directory of colleges, universities and office or business-park places sourced from OpenStreetMap.
 
 To generate a city without running Python locally, open **GitHub → Actions → Build city research data → Run workflow**, choose one city, and start the run. It collects Magicbricks project pages and OpenStreetMap context, builds the city files in `web/public/data/`, and commits only the generated web data. Run one city at a time. If a public data source blocks or rate-limits the runner, inspect the workflow log; do not work around captchas or access controls.
 

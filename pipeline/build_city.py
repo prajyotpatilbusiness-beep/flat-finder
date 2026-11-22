@@ -311,7 +311,7 @@ def main(city="gurgaon"):
     raw = json.loads((out / "mb_projects.json").read_text())
     coverage_path = out / "mb_coverage.json"
     collection = json.loads(coverage_path.read_text(encoding="utf-8")) if coverage_path.exists() else None
-    located = [p for p in raw if inside_city_bbox(p, cfg["bbox"])]
+    located = [p for p in raw if inside_city_bbox(p, cfg.get("project_bbox", cfg["bbox"]))]
     not_located = len(raw) - len(located)
     projects = dedupe(located)
     portal_file = out / "portal_listings.json"
@@ -467,9 +467,9 @@ def main(city="gurgaon"):
     for s in societies:
         here = (s["lng"], s["lat"])
         near = {}
-        for q in poi_grid.near(here, r=3):
+        for q in poi_grid.near(here, r=10):
             d = geo.dist_m(here, (q["lng"], q["lat"]))
-            if d > 3000:
+            if d > 10000:
                 continue
             k = q["k"]
             if k not in near or d < near[k]["m"]:
@@ -606,7 +606,7 @@ def write_csv(soc_path, unit_path, societies):
         cols += [f"buy_{b}bhk_median", f"buy_{b}bhk_estimate", f"rent_{b}bhk_median", f"rent_{b}bhk_estimate", f"{b}bhk_price_flag"]
     cols += ["rating", "rating_count", "review_count", "amenities", "verified", "smallest_bedroom_ft",
              "listing_sources", "magicbricks_url", "google_maps_url"]
-    with open(soc_path, "w", newline="") as f:
+    with open(soc_path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(cols)
         for s in societies:
@@ -624,7 +624,7 @@ def write_csv(soc_path, unit_path, societies):
                     "; ".join(PORTAL_LABELS.get(k, k) for k, v in s.get("listing_sources", {}).items() if v["buy"] or v["rent"]),
                     s["url"], s["gmaps"]]
             w.writerow(row)
-    with open(unit_path, "w", newline="") as f:
+    with open(unit_path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["society_id", "society", "unit", "bhk", "super_sqft", "carpet_sqft", "listed_sqft", "bedrooms_ft", "all_bedrooms_read",
                     "ai_narrowest_bedroom_ft", "ai_every_bedroom_long_side_at_least_ft", "ai_every_bedroom_area_at_least_sqft", "confidence", "source", "page"])

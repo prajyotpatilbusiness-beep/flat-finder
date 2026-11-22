@@ -4,10 +4,13 @@ usage: python osm_fetch.py <city>  -> out/<city>/osm_areas.geojson, out/<city>/o
 """
 import json
 import pathlib
+import re
 import sys
 import time
 import urllib.parse
 import urllib.request
+
+import geo
 
 ROOT = pathlib.Path(__file__).parent
 CACHE = ROOT / "cache" / "osm"
@@ -18,6 +21,7 @@ BBOX = tuple(CITIES[CITY]["bbox"])  # south, west, north, east
 OUT = OUT / CITY
 CACHE = CACHE / CITY
 MIRRORS = [
+    "https://ovp.dresel.systems/api-as/interpreter",
     "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
     "https://overpass-api.de/api/interpreter",
     "https://overpass.private.coffee/api/interpreter",
@@ -28,7 +32,7 @@ def overpass(query, name):
     CACHE.mkdir(parents=True, exist_ok=True)
     f = CACHE / f"{name}.json"
     if f.exists():
-        return json.loads(f.read_text())
+        return json.loads(f.read_text(encoding="utf-8"))
     body = urllib.parse.urlencode({"data": query}).encode()
     for url in MIRRORS * 2:
         try:
@@ -38,7 +42,8 @@ def overpass(query, name):
             f.write_bytes(raw)
             return data
         except Exception as e:
-            print("mirror failed", url, e, flush=True)
+            detail = e.read().decode("utf-8", "ignore")[:2000] if hasattr(e, "read") else ""
+            print("mirror failed", url, e, detail, flush=True)
             time.sleep(10)
     raise SystemExit("all Overpass mirrors failed")
 
@@ -120,12 +125,21 @@ POI_QUERY = """[out:json][timeout:280];(
   way["leisure"="park"]{bb};relation["leisure"="park"]{bb};node["leisure"="park"]{bb};
   node["railway"="station"]{bb};node["station"="subway"]{bb};node["railway"="halt"]{bb};
   node["amenity"="school"]{bb};way["amenity"="school"]{bb};
+  nwr["amenity"="college"]{bb};nwr["amenity"="university"]{bb};
   node["amenity"="hospital"]{bb};way["amenity"="hospital"]{bb};
   node["shop"="mall"]{bb};way["shop"="mall"]{bb};way["shop"="supermarket"]{bb};node["shop"="supermarket"]{bb};
+  nwr["office"]{bb};nwr["building"="office"]{bb};
+  nwr["name"~"park|Park|cyber|Cyber|eon|EON|Mindspace|mindspace|Infocity|infocity|free zone|Free Zone|Tech Zone|tech zone|Techzone|techzone|Info Park|info park|InfoPark|infopark|Commerzone|commerzone"]{bb};
 );out center tags;"""
 
 
 def poi_kind(t):
+    if t.get("tourism") in ("hotel", "hostel", "guest_house"):
+        return None
+    if t.get("highway") or t.get("route"):
+        return None
+    if t.get("amenity") in ("college", "university"):
+        return t["amenity"]
     if t.get("leisure") == "park":
         return "park"
     if t.get("station") == "subway" or "metro" in (t.get("name") or "").lower() or t.get("subway") == "yes":
@@ -136,20 +150,57 @@ def poi_kind(t):
         return t["amenity"]
     if t.get("shop") in ("mall", "supermarket"):
         return "shopping"
+    if t.get("office") == "research":
+        return "office"
+    name = (t.get("name") or "").lower()
+    if re.search(r"\b(?:it|software|cyber|infotech|infopark|infocity|eon|mindspace|techzone|commerzone)[\w &-]*(?:park|zone|city|campus|free zone|sez)\b|\b(?:it park|tech park|tech zone|techzone|software park|cyber city|cyber park|infotech park|infopark|info park|commerzone)\b", name):
+        return "it_park"
+    if t.get("office") or t.get("building") == "office":
+        return "office"
     return None
+
+
+def poi_record(el, city_name):
+    tags = el.get("tags", {})
+    center = el.get("center") or ({"lat": el["lat"], "lon": el["lon"]} if "lat" in el else None)
+    kind = poi_kind(tags)
+    if not center or not kind:
+        return None
+    name = tags.get("name")
+    record = {"k": kind, "name": name, "lng": round(center["lon"], 5), "lat": round(center["lat"], 5),
+              "source": f"https://www.openstreetmap.org/{el['type']}/{el['id']}"}
+    address = tags.get("addr:full") or ", ".join(tags[k] for k in ("addr:street", "addr:suburb", "addr:city", "addr:postcode") if tags.get(k))
+    if address:
+        record["address"] = address
+    if name:
+        record["gmaps"] = "https://www.google.com/maps/search/?" + urllib.parse.urlencode({"api": "1", "query": f"{name}, {city_name}"})
+    if tags.get("website"):
+        record["website"] = tags["website"]
+    return record
+
+
+def dedupe_pois(items, radius_m=500):
+    """Collapse multiple nearby OSM features for the same named place."""
+    seen = {}
+    out = []
+    for p in items:
+        name = " ".join(re.findall(r"[a-z0-9]+", (p.get("name") or "").lower()))
+        key = (p["k"], name)
+        matches = seen.get(key, []) if name else []
+        if any(geo.dist_m((p["lng"], p["lat"]), (q["lng"], q["lat"])) <= radius_m for q in matches):
+            continue
+        out.append(p)
+        if name:
+            seen.setdefault(key, []).append(p)
+    return out
 
 
 def fetch_pois():
     s, w, n, e = BBOX
     data = overpass(POI_QUERY.replace("{bb}", f"({s},{w},{n},{e})"), "pois")
-    out = []
-    for el in data["elements"]:
-        c = el.get("center") or ({"lat": el["lat"], "lon": el["lon"]} if "lat" in el else None)
-        k = poi_kind(el.get("tags", {}))
-        if c and k:
-            out.append({"k": k, "name": el.get("tags", {}).get("name"), "lng": round(c["lon"], 5), "lat": round(c["lat"], 5)})
+    out = dedupe_pois([p for el in data["elements"] if (p := poi_record(el, CITIES[CITY]["name"]))])
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "osm_pois.json").write_text(json.dumps(out))
+    (OUT / "osm_pois.json").write_text(json.dumps(out), encoding="utf-8")
     from collections import Counter
     print("pois", Counter(p["k"] for p in out))
 
