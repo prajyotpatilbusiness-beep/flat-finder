@@ -44,3 +44,31 @@ a.details{display:block;text-align:center;text-decoration:none}
 .details:hover{filter:brightness(.96)}
 @media(max-width:1050px){.market-stats{padding-left:24px;padding-right:24px;grid-template-columns:repeat(2,minmax(0,1fr))}.searchbox{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.market-stats{padding:0 18px 0;gap:8px}.market-stats article{padding:12px}.market-stats article b{font-size:22px}.card-source-row{gap:6px}}
+
+
+/* Pro-only GPS radius discovery. */
+.nearby-search{
+  max-width:1320px;margin:0 auto 18px;padding:19px 21px;
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 24px;
+  align-items:center;border:1px solid #cfe4df;border-radius:18px;
+  background:linear-gradient(120deg,#f4fbf9,#ffffff 70%);box-shadow:0 8px 26px rgba(21,76,70,.045)
+}
+.nearby-copy h2{margin:7px 0 5px;color:var(--ink);font:800 17px Manrope,sans-serif}
+.nearby-copy p{max-width:680px;margin:0;color:var(--muted);font-size:11px;line-height:1.6}
+.pro-feature-label{display:inline-flex;align-items:center;min-height:22px;padding:4px 9px;border-radius:999px;background:#e5f5ef;color:#116a54;font-size:9px;font-weight:900;letter-spacing:.1em}
+.nearby-controls{display:flex;align-items:end;gap:8px}
+.nearby-controls label{display:grid;gap:5px;color:var(--muted);font-size:10px;font-weight:800}
+.nearby-controls select{min-height:42px;padding:0 28px 0 11px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-weight:700}
+.nearby-controls .primary,.nearby-controls .ghost{min-height:42px;padding:10px 13px;white-space:nowrap}
+.nearby-status{grid-column:1/-1;margin:0;color:#52716d;font-size:10px;line-height:1.5}
+.nearby-status.error{color:#b42338}
+.data-status{max-width:1240px;margin:-8px auto 17px;padding:0 2px;color:#687c88;font-size:10px;line-height:1.5}
+.nearby-controls button:disabled{opacity:.65;cursor:wait}
+@media(max-width:1050px){.nearby-search{margin-left:24px;margin-right:24px}}
+@media(max-width:700px){
+  .nearby-search{margin-left:18px;margin-right:18px;padding:16px;grid-template-columns:1fr;gap:12px}
+  .nearby-controls{display:grid;grid-template-columns:105px 1fr}
+  .nearby-controls #clearNearby{grid-column:1/-1}
+  .nearby-status{grid-column:1}
+  .data-status{margin-left:20px;margin-right:20px}
+}
