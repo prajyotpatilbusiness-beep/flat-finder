@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f7f5ff"><title>Flat Finder — India-wide Home Search</title>
+<meta name="theme-color" content="#f2faf8"><title>Flat Finder — India-wide Home Search</title>
 <meta name="description" content="Search rental and sale homes across India by city, locality, budget, BHK and amenities.">
 <script>if(window.top===window)window.location.replace("/");</script>
 <link rel="canonical" href="https://flat-finder-57f.pages.dev/marketplace.html">
@@ -11,12 +11,14 @@
 <header class="topbar"><a class="brand" href="/" aria-label="Flat Finder home"><span class="logo">⌂</span><span><b>Flat Finder</b><small>Find home. Live better.</small></span></a>
 <nav><a class="active" href="#explore">Explore</a><a href="#saved">Saved <i id="savedCount">0</i></a><a href="/#plans" target="_top">Plans</a><a href="/">Society Research</a></nav>
 <div class="actions"><button class="ghost" id="loginBtn">Sign in</button><button class="primary" id="listBtn">+ List property</button></div><button class="menu" id="menuBtn">☰</button></header>
-<main id="explore"><section class="hero"><div><span class="eyebrow">HOMES ACROSS INDIA</span><h1>Find a place that <em>feels like home.</em></h1><p>Compare rentals and homes for sale by location, budget, BHK and the details that matter.</p></div><div class="trust"><b>India-wide discovery</b><span>Approximate map pins • Demo inventory clearly labelled</span></div></section>
+<main id="explore"><section class="hero"><div><span class="eyebrow">HOMES ACROSS INDIA</span><h1>Find a place that <em>feels like home.</em></h1><p>Compare rentals and homes for sale by location, budget, BHK and the details that matter.</p></div><div class="trust"><b>India-wide discovery</b><span>Source-labelled listings • Map clusters • Society research</span></div></section>
 <section class="searchbox"><div class="field location"><label>LOCATION</label><input id="location" placeholder="City, locality or PIN code" autocomplete="off"><div id="suggestions" class="suggestions"></div></div>
 <div class="field"><label>LOOKING TO</label><div class="seg"><button class="on" data-purpose="rent">Rent</button><button data-purpose="sale">Buy</button></div></div>
 <div class="field"><label>CITY</label><select id="city"><option value="all">All India</option><option>Pune</option><option>Mumbai</option><option>Bengaluru</option><option>Delhi NCR</option><option>Hyderabad</option><option>Chennai</option><option>Gurugram</option><option>Noida</option><option>Kolkata</option></select></div>
+<div class="field"><label>LISTING SOURCE</label><select id="source"><option value="all">All sources</option><option value="flatfinder">Flat Finder members</option><option value="99acres">99acres</option><option value="nobroker">NoBroker</option><option value="housing">Housing.com</option></select></div>
 <button class="primary searchbtn" id="searchBtn">⌕ Search homes</button></section>
-<div class="demo"><b>Demo inventory:</b> the sample homes below are fictional examples, not live offers or verified listings.</div>
+<section class="market-stats" aria-label="Marketplace coverage"><article><span>PORTAL FEEDS</span><b id="portalSourceCount">3</b><small>Sources supported</small></article><article><span>PORTAL LISTINGS</span><b id="portalListingCount">0</b><small>From authorised feeds</small></article><article><span>MEMBER LISTINGS</span><b id="approvedListingCount">0</b><small>Approved on Flat Finder</small></article><article><span>RESEARCH CITIES</span><b id="researchCityCount">2</b><small>Society map datasets</small></article></section>
+<div class="demo" id="sourceNotice"><b>Source transparency:</b> sample homes are fictional. Portal listings appear only from authorised 99acres, NoBroker and Housing.com feeds, with a link back to the original listing.</div>
 <section class="content"><aside class="filters"><div class="filterhead"><div><span class="eyebrow">REFINE</span><h2>Filters</h2></div><button id="reset">Reset</button></div>
 <label>Property type</label><div class="chips" id="types"></div><label>BHK</label><div class="chips" id="bhks"></div>
 <label>Maximum <span id="budgetLabel">monthly rent</span><b id="budgetValue">₹50,000</b></label><input id="budget" type="range" min="5000" max="100000" step="2500" value="50000"><div class="range"><span>₹5k</span><span>₹1L+</span></div>
