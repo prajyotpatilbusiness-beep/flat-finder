@@ -11,18 +11,13 @@ on:
           - bangalore
           - mumbai
           - pune
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/trigger-bangalore.txt"
 
 permissions:
   contents: write
   actions: read
 
 concurrency:
-  group: city-data-${{ inputs.city || 'bangalore' }}
+  group: city-data-${{ inputs.city }}
   cancel-in-progress: false
 
 jobs:
@@ -39,12 +34,12 @@ jobs:
           python-version: "3.11"
       - name: Collect all project links
         env:
-          CITY: ${{ inputs.city || 'bangalore' }}
+          CITY: ${{ inputs.city }}
         run: python pipeline/mb_crawl.py list "$CITY"
       - name: Create sequential project batches
         id: matrix
         env:
-          CITY: ${{ inputs.city || 'bangalore' }}
+          CITY: ${{ inputs.city }}
         run: |
           python - <<'PY'
           import json
@@ -68,8 +63,8 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.city || 'bangalore' }}-index
-          path: pipeline/out/${{ inputs.city || 'bangalore' }}/mb_index.json
+          name: ${{ inputs.city }}-index
+          path: pipeline/out/${{ inputs.city }}/mb_index.json
           if-no-files-found: error
           retention-days: 7
 
@@ -89,18 +84,18 @@ jobs:
           python-version: "3.11"
       - uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.city || 'bangalore' }}-index
-          path: pipeline/out/${{ inputs.city || 'bangalore' }}
+          name: ${{ inputs.city }}-index
+          path: pipeline/out/${{ inputs.city }}
       - name: Collect this project batch
         env:
-          CITY: ${{ inputs.city || 'bangalore' }}
+          CITY: ${{ inputs.city }}
           START: ${{ matrix.start }}
           END: ${{ matrix.end }}
         run: python pipeline/mb_crawl.py projects-range "$CITY" "$START" "$END"
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.city || 'bangalore' }}-projects-${{ matrix.start }}-${{ matrix.end }}
-          path: pipeline/out/${{ inputs.city || 'bangalore' }}/mb_projects_part_${{ matrix.start }}_${{ matrix.end }}.json
+          name: ${{ inputs.city }}-projects-${{ matrix.start }}-${{ matrix.end }}
+          path: pipeline/out/${{ inputs.city }}/mb_projects_part_${{ matrix.start }}_${{ matrix.end }}.json
           if-no-files-found: error
           retention-days: 7
 
@@ -118,26 +113,26 @@ jobs:
           python-version: "3.11"
       - uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.city || 'bangalore' }}-index
-          path: pipeline/out/${{ inputs.city || 'bangalore' }}
+          name: ${{ inputs.city }}-index
+          path: pipeline/out/${{ inputs.city }}
       - uses: actions/download-artifact@v4
         with:
-          pattern: ${{ inputs.city || 'bangalore' }}-projects-*
-          path: pipeline/out/${{ inputs.city || 'bangalore' }}
+          pattern: ${{ inputs.city }}-projects-*
+          path: pipeline/out/${{ inputs.city }}
           merge-multiple: true
       - name: Merge all project batches
         env:
-          CITY: ${{ inputs.city || 'bangalore' }}
+          CITY: ${{ inputs.city }}
         run: python pipeline/mb_crawl.py merge "$CITY"
       - name: Collect map context and build city dataset
         env:
-          CITY: ${{ inputs.city || 'bangalore' }}
+          CITY: ${{ inputs.city }}
         run: |
           python pipeline/osm_fetch.py "$CITY"
           python pipeline/build_city.py "$CITY"
       - name: Validate generated city dataset
         env:
-          CITY: ${{ inputs.city || 'bangalore' }}
+          CITY: ${{ inputs.city }}
         run: |
           python - <<'PY'
           import json
@@ -157,7 +152,7 @@ jobs:
           PY
       - name: Commit generated website data
         env:
-          CITY: ${{ inputs.city || 'bangalore' }}
+          CITY: ${{ inputs.city }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
