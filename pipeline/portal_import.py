@@ -1,4 +1,4 @@
-"""Import licensed 99acres and NoBroker exports into a privacy-safe common schema.
+"""Import licensed 99acres, NoBroker and Housing.com exports into a privacy-safe common schema.
 
 This module deliberately does not crawl either portal. Supply an authorized CSV or
 JSON export at pipeline/incoming/<city>/<source>.csv|json. Only non-personal listing
@@ -20,7 +20,9 @@ OUT = ROOT / "out"
 SOURCE_DOMAINS = {
     "99acres": {"99acres.com", "www.99acres.com"},
     "nobroker": {"nobroker.in", "www.nobroker.in"},
+    "housing": {"housing.com", "www.housing.com"},
 }
+PORTAL_SOURCES = ("99acres", "nobroker", "housing")
 CITY_ALIASES = {
     "bangalore": {"bangalore", "bengaluru"},
     "mumbai": {"mumbai"},
@@ -181,7 +183,7 @@ def import_city_feeds(city, incoming=INCOMING, output_root=OUT):
     folder = pathlib.Path(incoming) / city
     output = []
     stats = {}
-    for source in ("99acres", "nobroker"):
+    for source in PORTAL_SOURCES:
         candidates = [folder / f"{source}.json", folder / f"{source}.csv"]
         path = next((p for p in candidates if p.is_file()), None)
         if path is None:
