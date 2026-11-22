@@ -1,7 +1,7 @@
 import './style.css';
 import './research-redesign.css';
 import maplibregl from 'maplibre-gl';
-import { addBaseLayers, addSocietyLayers, BASE_MODES, createMap, OVERVIEW, setBaseMode, setHighlights, setSelected, setStates, startPulse } from './map.js';
+import { addBaseLayers, addSocietyLayers, addSocietyShapes, BASE_MODES, createMap, OVERVIEW, setBaseMode, setHighlights, setSelected, setStates, startPulse } from './map.js';
 import { searchSocieties } from './search.js';
 import { createFeed } from './feed.js';
 import { AMENITY_KEYS, DEFAULT_CRITERIA, NEAR, RANK, feetLabel, formatINR, matchSociety, matchUnit, priceFor, roomPasses } from './filters.js';
@@ -37,10 +37,9 @@ const highlights = { glow: true, bounds: true, labels: true, ...store.get('ff-hi
 async function boot() {
   const cities = await fetch('/data/cities.json').then((r) => r.json()).catch(() => ({ gurgaon: { name: 'Gurugram' } }));
   cityId = cities[params.get('city')] ? params.get('city') : 'gurgaon';
-  const [city, shapes] = await Promise.all([
-    fetch(`/data/${cityId}.json`).then((r) => r.json()),
-    fetch(`/data/${cityId}-shapes.geojson`).then((r) => r.json()),
-  ]);
+  const city = await fetch(`/data/${cityId}-map.json`)
+    .then((r) => { if (!r.ok) throw new Error('Optimised city index is not published yet.'); return r.json(); })
+    .catch(() => fetch(`/data/${cityId}.json`).then((r) => r.json()));
   data = city;
   OVERVIEW.center = city.city.center;
   OVERVIEW.zoom = city.city.zoom || OVERVIEW.zoom;
@@ -64,7 +63,11 @@ async function boot() {
   $('dl-units').href = `/data/${cityId}-units.csv`;
   $('dl-results').onclick = exportResults;
 
-  feed = createFeed($('feed'), $('log-mode'), { events: city.events, byId });
+  feed = { ambient() {}, play() {}, sweep() {}, stop() {} };
+  const loadActivity = () => fetch(`/data/${cityId}-events.json`)
+    .then((r) => { if (!r.ok) throw new Error('Activity feed unavailable'); return r.json(); })
+    .then((events) => { feed = createFeed($('feed'), $('log-mode'), { events, byId }); feed.ambient(); })
+    .catch(() => { $('log-mode').textContent = 'limited'; });
   buildFilters();
   buildSearch();
   buildList();
@@ -83,20 +86,55 @@ async function boot() {
   }
   const points = { type: 'FeatureCollection', features: city.societies.map((s) => ({
     type: 'Feature', properties: { sid: s.id, name: s.name, show: 1 }, geometry: { type: 'Point', coordinates: [s.lng, s.lat] } })) };
-  map.once('style.load', () => {
-    addSocietyLayers(map, shapes, points);
-    addBaseLayers(map);
-    setBaseMode(map, baseMode);
-    setHighlights(map, highlights);
-    startPulse(map);
-    // any hand on the map stops a running tour
-    for (const ev of ['dragstart', 'wheel', 'touchstart']) map.on(ev, (e) => { if (e.originalEvent) stopTour(); });
-    for (const l of ['bld', 'site-fill', 'glow']) {
+  let shapesLoading = null;
+  const bindShapeInteractions = () => {
+    for (const l of ['bld', 'site-fill']) {
+      if (!map.getLayer(l)) continue;
       map.on('click', l, (e) => { stopTour(); openSociety(e.features[0].properties.sid); });
       map.on('mouseenter', l, () => (map.getCanvas().style.cursor = 'pointer'));
       map.on('mouseleave', l, () => (map.getCanvas().style.cursor = ''));
     }
+  };
+  const loadShapes = () => {
+    if (map.getSource('shapes')) return Promise.resolve();
+    if (shapesLoading) return shapesLoading;
+    shapesLoading = fetch(`/data/${cityId}-shapes.geojson`)
+      .then((r) => { if (!r.ok) throw new Error('Society outline file unavailable'); return r.json(); })
+      .then((shapes) => {
+        addSocietyShapes(map, shapes);
+        setStates(map, [...states.entries()]);
+        if (selected) setSelected(map, selected, null);
+        bindShapeInteractions();
+      })
+      .catch((error) => { console.warn('Detailed map shapes were not loaded:', error); })
+      .finally(() => { shapesLoading = null; });
+    return shapesLoading;
+  };
+  map.once('style.load', () => {
+    addSocietyLayers(map, null, points);
+    addBaseLayers(map);
+    setBaseMode(map, baseMode);
+    setHighlights(map, highlights);
+    startPulse(map);
+    setStates(map, [...states.entries()]);
+    map.on('click', 'clusters', (e) => {
+      const feature = e.features?.[0];
+      if (!feature) return;
+      map.getSource('pts').getClusterExpansionZoom(feature.properties.cluster_id, (error, zoom) => {
+        if (!error) map.easeTo({ center: feature.geometry.coordinates, zoom, duration: 450 });
+      });
+    });
+    map.on('click', 'society-dot', (e) => { const sid = e.features?.[0]?.properties?.sid; if (sid) { stopTour(); openSociety(sid); } });
+    map.on('click', 'glow', (e) => { const sid = e.features?.[0]?.properties?.sid; if (sid) { stopTour(); openSociety(sid); } });
+    for (const l of ['clusters', 'society-dot', 'glow']) {
+      map.on('mouseenter', l, () => (map.getCanvas().style.cursor = 'pointer'));
+      map.on('mouseleave', l, () => (map.getCanvas().style.cursor = ''));
+    }
+    map.on('zoomend', () => { if (map.getZoom() >= 14.25) loadShapes(); });
+    // any hand on the map stops a running tour
+    for (const ev of ['dragstart', 'wheel', 'touchstart']) map.on(ev, (e) => { if (e.originalEvent) stopTour(); });
     intro();
+    loadActivity();
   });
 }
 
@@ -271,7 +309,7 @@ function applyFilters(wave = false) {
     let i = 0;
     const per = Math.ceil(changed.length / 30);
     waveTimer = setInterval(() => { setStates(map, changed.slice(i, i + per)); i += per; if (i >= changed.length) clearInterval(waveTimer); }, 50);
-  } else if (map?.getSource?.('shapes')) setStates(map, changed);
+  } else if (map?.getSource?.('pts')) setStates(map, changed);
   renderResults();
   if (selected) renderCard(byId.get(selected));
 }
