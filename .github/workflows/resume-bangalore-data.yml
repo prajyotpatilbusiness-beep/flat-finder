@@ -1,0 +1,169 @@
+name: Resume Bengaluru research data
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/trigger-bangalore-resume.txt"
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: bangalore-resume-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Restore saved batches and plan remaining work
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      project_matrix: ${{ steps.matrix.outputs.project_matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Restore the original index and completed batches
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 44945612463
+          pattern: bangalore-*
+          path: pipeline/out/bangalore
+          merge-multiple: true
+      - name: Build a matrix from missing batches only
+        id: matrix
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          folder = Path("pipeline/out/bangalore")
+          index_path = folder / "mb_index.json"
+          if not index_path.is_file():
+              raise SystemExit("Saved Bengaluru index artifact is missing.")
+          count = len(json.loads(index_path.read_text(encoding="utf-8")))
+          chunk_size = 5000
+          include = []
+          for start in range(0, count, chunk_size):
+              end = min(start + chunk_size, count)
+              part = folder / f"mb_projects_part_{start}_{end}.json"
+              if not part.is_file():
+                  include.append({"start": start, "end": end})
+          if not include:
+              raise SystemExit("No missing project batches; the saved batches are already complete.")
+          matrix = json.dumps({"include": include}, separators=(",", ":"))
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write("project_matrix=" + matrix + "\n")
+          print(f"Restored {count:,} indexed projects; {len(include)} batches remain: {include}")
+          PY
+
+  projects:
+    name: Project details ${{ matrix.start }}-${{ matrix.end }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix: ${{ fromJSON(needs.prepare.outputs.project_matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Restore the original Bengaluru index
+        uses: actions/download-artifact@v4
+        with:
+          name: bangalore-index
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 44945612463
+          path: pipeline/out/bangalore
+      - name: Collect this missing project batch
+        env:
+          START: ${{ matrix.start }}
+          END: ${{ matrix.end }}
+        run: python pipeline/mb_crawl.py projects-range bangalore "$START" "$END"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: resume-bangalore-projects-${{ matrix.start }}-${{ matrix.end }}
+          path: pipeline/out/bangalore/mb_projects_part_${{ matrix.start }}_${{ matrix.end }}.json
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Merge, validate and publish Bengaluru
+    needs: [prepare, projects]
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Restore original index and completed batches
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 44945612463
+          pattern: bangalore-*
+          path: pipeline/out/bangalore
+          merge-multiple: true
+      - name: Download newly completed batches
+        uses: actions/download-artifact@v4
+        with:
+          pattern: resume-bangalore-projects-*
+          path: pipeline/out/bangalore
+          merge-multiple: true
+      - name: Import any authorized 99acres and NoBroker feeds
+        run: python pipeline/portal_import.py bangalore
+      - name: Merge all Bengaluru project batches
+        run: python pipeline/mb_crawl.py merge bangalore
+      - name: Collect map context and build Bengaluru dataset
+        run: |
+          python pipeline/osm_fetch.py bangalore
+          python pipeline/build_city.py bangalore
+      - name: Validate generated city dataset
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          data_path = Path("web/public/data/bangalore.json")
+          shapes_path = Path("web/public/data/bangalore-shapes.geojson")
+          if not data_path.is_file() or not shapes_path.is_file():
+              raise SystemExit("Missing generated Bengaluru files.")
+          data = json.loads(data_path.read_text(encoding="utf-8"))
+          count = int(data.get("counts", {}).get("on_map", 0))
+          if count < 1:
+              raise SystemExit("No Bengaluru societies were mapped; refusing to publish.")
+          print(f"Validated {data['city']['name']}: {count:,} mapped societies.")
+          print("Portal feed counts:", data.get("portal_feeds", {}))
+          PY
+      - name: Commit generated Bengaluru website data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            web/public/data/bangalore.json \
+            web/public/data/bangalore-details.json \
+            web/public/data/bangalore-shapes.geojson \
+            web/public/data/bangalore-societies.csv \
+            web/public/data/bangalore-units.csv \
+            web/public/data/cities.json
+          if git diff --cached --quiet; then
+            echo "No generated Bengaluru data changes to publish."
+            exit 0
+          fi
+          git commit -m "Publish Bengaluru society research dataset"
+          git push
