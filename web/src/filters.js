@@ -41,6 +41,10 @@ export const NEAR = {
   school: { label: 'School', kinds: ['school'], m: 1000 },
   hospital: { label: 'Hospital', kinds: ['hospital'], m: 2000 },
   shopping: { label: 'Mall or supermarket', kinds: ['shopping'], m: 1500 },
+  college: { label: 'College', kinds: ['college'], m: 3000 },
+  university: { label: 'University', kinds: ['university'], m: 5000 },
+  it_park: { label: 'IT park', kinds: ['it_park'], m: 10000 },
+  office: { label: 'Office', kinds: ['office'], m: 3000 },
 };
 
 export function isNear(s, key) {

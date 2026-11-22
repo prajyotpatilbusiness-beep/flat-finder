@@ -1,6 +1,7 @@
 pipeline/cache/
 pipeline/cache_*.log
 pipeline/out/*/osm_buildings.geojson
+pipeline/out/pune/
 node_modules/
 web/dist/
 .DS_Store
