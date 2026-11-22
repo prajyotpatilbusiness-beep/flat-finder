@@ -13,16 +13,60 @@ let listings=[
 {id:"demo-hyderabad-1",city:"Hyderabad",locality:"Gachibowli",title:"Cedar Park Homes",purpose:"sale",type:"Apartment",bhk:2,bath:2,area:1180,price:8900000,deposit:0,furnishing:"Semi-furnished",amenities:["Parking","Lift","Security","Gym","Power backup"],score:9.0,lat:17.4401,lng:78.3489,image:"https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80",tag:"Demo sale",distance:"Near Financial District"},
 {id:"demo-chennai-1",city:"Chennai",locality:"OMR",title:"Palm Court",purpose:"rent",type:"Apartment",bhk:3,bath:3,area:1400,price:42000,deposit:120000,furnishing:"Furnished",amenities:["Parking","Lift","Security","Pool"],score:8.7,lat:12.9352,lng:80.2300,image:"https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=900&q=80",tag:"Demo",distance:"Near Tidel Park"}];
 
-const state={purpose:"rent",city:"all",location:"",type:"Apartment",bhk:"all",budget:50000,sort:"recommended",saved:new Set(JSON.parse(localStorage.getItem("ff-saved")||"[]"))};
-const money=n=>n>=10000000?"₹"+(n/10000000).toFixed(2)+" Cr":n>=100000?"₹"+(n/100000).toFixed(1)+" L":"₹"+n.toLocaleString("en-IN");
-const q=s=>document.querySelector(s); const qa=s=>[...document.querySelectorAll(s)];
+const state={
+  purpose:"rent",city:"all",location:"",type:"Apartment",bhk:"all",
+  budget:50000,sort:"recommended",source:"all",
+  saved:new Set(JSON.parse(localStorage.getItem("ff-saved")||"[]"))
+};
+const money=n=>n>=10000000?"₹"+(n/10000000).toFixed(2)+" Cr":n>=100000?"₹"+(n/100000).toFixed(1)+" L":"₹"+Math.round(n).toLocaleString("en-IN");
+const q=s=>document.querySelector(s);
+const qa=s=>[...document.querySelectorAll(s)];
 const typeList=["Apartment","Independent House","Villa","Studio","PG / Co-living"];
 const bhkList=["all","1","2","3","4+"];
-function renderChips(){q("#types").innerHTML=typeList.map(x=>"<button class=\"chip "+(state.type===x?"on":"")+" \" data-type=\""+x+"\">"+x+"</button>").join("");q("#bhks").innerHTML=bhkList.map(x=>"<button class=\"chip "+(state.bhk===x?"on":"")+" \" data-bhk=\""+x+"\">"+(x==="all"?"Any":x)+"</button>").join("");qa("[data-type]").forEach(b=>b.onclick=()=>{state.type=b.dataset.type;renderChips();render()});qa("[data-bhk]").forEach(b=>b.onclick=()=>{state.bhk=b.dataset.bhk;render()})}
-function matches(l){if(l.purpose!==state.purpose)return false;if(state.city!=="all"&&l.city!==state.city)return false;var text=(l.city+" "+l.locality+" "+l.title).toLowerCase();if(state.location&&!text.includes(state.location.toLowerCase()))return false;if(state.type&&l.type!==state.type)return false;if(state.bhk!=="all"&&(state.bhk==="4+"?l.bhk<4:String(l.bhk)!==state.bhk))return false;if(l.price>state.budget)return false;var f=qa("#furnishing input:checked").map(x=>x.value);if(f.length&&!f.includes(l.furnishing))return false;var a=qa("#amenities input:checked").map(x=>x.value);if(a.some(v=>!l.amenities.includes(v)))return false;return true}
+const portalLabels={99acres:"99acres",nobroker:"NoBroker",housing:"Housing.com",flatfinder:"Flat Finder",demo:"Sample"};
+const cityNames={gurgaon:"Gurugram",bangalore:"Bengaluru",mumbai:"Mumbai",pune:"Pune"};
+const portalHosts={99acres:["99acres.com","www.99acres.com"],nobroker:["nobroker.in","www.nobroker.in"],housing:["housing.com","www.housing.com"]};
+
+function safePortalUrl(value,source){
+  try{
+    const url=new URL(String(value||""));
+    if(!["https:","http:"].includes(url.protocol)||!(portalHosts[source]||[]).includes(url.hostname))return "";
+    return url.href;
+  }catch{return "";}
+}
+function propertyType(value){
+  const text=String(value||"").toLowerCase();
+  if(/villa|bungalow/.test(text))return "Villa";
+  if(/independent|row house|duplex|house/.test(text))return "Independent House";
+  if(/studio/.test(text))return "Studio";
+  if(/pg|paying guest|co.?living/.test(text))return "PG / Co-living";
+  return "Apartment";
+}
+function renderChips(){
+  q("#types").innerHTML=typeList.map(x=>"<button class=\"chip "+(state.type===x?"on":"")+"\" data-type=\""+x+"\">"+x+"</button>").join("");
+  q("#bhks").innerHTML=bhkList.map(x=>"<button class=\"chip "+(state.bhk===x?"on":"")+"\" data-bhk=\""+x+"\">"+(x==="all"?"Any":x)+"</button>").join("");
+  qa("[data-type]").forEach(b=>b.onclick=()=>{state.type=b.dataset.type;renderChips();render()});
+  qa("[data-bhk]").forEach(b=>b.onclick=()=>{state.bhk=b.dataset.bhk;renderChips();render()});
+}
+function matches(l){
+  if(l.purpose!==state.purpose)return false;
+  if(state.city!=="all"&&l.city!==state.city)return false;
+  if(state.source!=="all"&&l.source!==state.source)return false;
+  const text=(l.city+" "+l.locality+" "+l.title).toLowerCase();
+  if(state.location&&!text.includes(state.location.toLowerCase()))return false;
+  if(state.type&&l.type!==state.type)return false;
+  if(state.bhk!=="all"&&(state.bhk==="4+"?Number(l.bhk)<4:String(l.bhk)!==state.bhk))return false;
+  if(Number(l.price)>state.budget)return false;
+  const furnishing=qa("#furnishing input:checked").map(x=>x.value);
+  if(furnishing.length&&!furnishing.includes(l.furnishing))return false;
+  const amenities=qa("#amenities input:checked").map(x=>x.value);
+  if(amenities.some(v=>!(l.amenities||[]).includes(v)))return false;
+  return true;
+}
 function card(l){
   const saved=state.saved.has(l.id);
-  const isDemo=String(l.id).startsWith("demo-");
+  const isDemo=l.source==="demo"||String(l.id).startsWith("demo-");
+  const isPortal=["99acres","nobroker","housing"].includes(l.source);
   const image=typeof l.image==="string"&&/^https:\/\//i.test(l.image)
     ? '<img src="'+authEscape(l.image)+'" alt="" loading="lazy">'
     : '<div class="photo-placeholder" aria-hidden="true">⌂</div>';
@@ -30,19 +74,169 @@ function card(l){
     .filter(Boolean).map(authEscape).join(" · ");
   const place=[l.city,l.distance].filter(Boolean).map(authEscape).join(" · ");
   const score=Number(l.score)>0
-    ? '<div class="score"><span>★ '+Number(l.score).toFixed(1)+'</span><small>Flat Finder sample score</small></div>'
+    ? '<div class="score"><span>★ '+Number(l.score).toFixed(1)+'</span><small>'+(isDemo?"Sample score":"Flat Finder score")+'</small></div>'
     : "";
-  const demo=isDemo?'<span class="demo-pill">DEMO</span>':"";
+  const sourceLabel=portalLabels[l.source]||"Flat Finder";
+  const demo=isDemo?'<span class="demo-pill">SAMPLE</span>':"";
+  const sourceTag='<span class="source-pill source-'+authEscape(l.source||"flatfinder")+'">'+authEscape(sourceLabel)+'</span>';
+  const action=isPortal
+    ? '<a class="details" href="'+authEscape(safePortalUrl(l.sourceUrl,l.source))+'" target="_blank" rel="noopener noreferrer">View original on '+authEscape(sourceLabel)+' ↗</a>'
+    : '<button class="details" data-detail="'+authEscape(l.id)+'">'+(isDemo?"Preview sample property →":"Unlock verified owner details →")+'</button>';
   return '<article class="card"><div class="photo">'+image
-    +'<span class="tag">'+authEscape(l.tag||"Listing")+'</span>'
-    +'<button class="heart '+(saved?"saved":"")+'" data-save="'+authEscape(l.id)+'">'+(saved?"♥":"♡")+'</button>'
-    +demo+'</div><div class="cardbody"><div class="meta">'+facts+'</div><h3>'+authEscape(l.title)+'</h3>'
+    +'<span class="tag">'+authEscape(l.tag||sourceLabel)+'</span>'
+    +'<button class="heart '+(saved?"saved":"")+'" data-save="'+authEscape(l.id)+'" aria-label="'+(saved?"Remove saved property":"Save property")+'">'+(saved?"♥":"♡")+'</button>'
+    +demo+'</div><div class="cardbody"><div class="card-source-row">'+sourceTag+'<span class="meta">'+facts+'</span></div><h3>'+authEscape(l.title)+'</h3>'
     +'<p class="place">⌖ '+place+'</p><div class="price">'+money(Number(l.price)||0)
-    +' <small>'+(l.purpose==="rent"?"/ month":"sale")+'</small></div>'+score
-    +'<button class="details" data-detail="'+authEscape(l.id)+'">Unlock details & owner contact →</button></div></article>';
+    +' <small>'+(l.purpose==="rent"?"/ month":"sale")+'</small></div>'+score+action+'</div></article>';
 }
-function render(){var rows=listings.filter(matches);if(state.sort==="priceAsc")rows.sort((a,b)=>a.price-b.price);if(state.sort==="priceDesc")rows.sort((a,b)=>b.price-a.price);if(state.sort==="area")rows.sort((a,b)=>b.area-a.area);q("#count").textContent=rows.length;q("#context").textContent=(state.city==="all"?"Across India":state.city)+" · "+(state.purpose==="rent"?"Rent":"Buy");q("#budgetLabel").textContent=state.purpose==="rent"?"monthly rent":"maximum sale price";q("#budgetValue").textContent=money(state.budget);q("#cards").innerHTML=rows.length?rows.map(card).join(""):"<div class=\"empty\"><div>⌂</div><h3>No homes match these filters.</h3><p>Try a wider budget, another city or fewer filters.</p><button class=\"primary\" id=\"emptyReset\">Reset filters</button></div>";qa("[data-save]").forEach(b=>b.onclick=()=>toggleSave(b.dataset.save));qa("[data-detail]").forEach(b=>b.onclick=()=>openDetail(b.dataset.detail));var er=q("#emptyReset");if(er)er.onclick=q("#reset").onclick;updateMap(rows)}
-function toggleSave(id){if(state.saved.has(id))state.saved.delete(id);else state.saved.add(id);localStorage.setItem("ff-saved",JSON.stringify([...state.saved]));q("#savedCount").textContent=state.saved.size;render()}
+function updateDashboardStats(){
+  const portalRows=listings.filter(l=>["99acres","nobroker","housing"].includes(l.source));
+  const memberRows=listings.filter(l=>l.source==="flatfinder");
+  if(q("#portalListingCount"))q("#portalListingCount").textContent=portalRows.length.toLocaleString("en-IN");
+  if(q("#approvedListingCount"))q("#approvedListingCount").textContent=memberRows.length.toLocaleString("en-IN");
+  if(q("#portalSourceCount"))q("#portalSourceCount").textContent="3";
+  if(q("#sourceNotice")){
+    if(portalRows.length){
+      const sources=[...new Set(portalRows.map(l=>portalLabels[l.source]))].join(", ");
+      q("#sourceNotice").innerHTML="<b>Imported portal listings:</b> "+portalRows.length.toLocaleString("en-IN")+" source-linked properties from "+authEscape(sources)+". Open the original listing to confirm current price and availability. Demo cards remain clearly marked.";
+    }else{
+      q("#sourceNotice").innerHTML="<b>Source transparency:</b> sample homes are fictional. 99acres, NoBroker and Housing.com feeds are supported; real listings appear only after an authorised CSV/JSON feed has been supplied. Portal cards link back to their source.";
+    }
+  }
+}
+function render(){
+  const rows=listings.filter(matches);
+  if(state.sort==="priceAsc")rows.sort((a,b)=>a.price-b.price);
+  if(state.sort==="priceDesc")rows.sort((a,b)=>b.price-a.price);
+  if(state.sort==="area")rows.sort((a,b)=>b.area-a.area);
+  q("#count").textContent=rows.length.toLocaleString("en-IN");
+  q("#context").textContent=(state.city==="all"?"Across India":state.city)+" · "+(state.purpose==="rent"?"Rent":"Buy")+(state.source==="all"?"":" · "+(portalLabels[state.source]||state.source));
+  q("#budgetLabel").textContent=state.purpose==="rent"?"monthly rent":"maximum sale price";
+  q("#budgetValue").textContent=money(state.budget);
+  q("#cards").innerHTML=rows.length?rows.map(card).join(""):"<div class=\"empty\"><div>⌂</div><h3>No homes match these filters.</h3><p>Try a wider budget, another city or another listing source.</p><button class=\"primary\" id=\"emptyReset\">Reset filters</button></div>";
+  qa("[data-save]").forEach(b=>b.onclick=()=>toggleSave(b.dataset.save));
+  qa("[data-detail]").forEach(b=>b.onclick=()=>openDetail(b.dataset.detail));
+  const empty=q("#emptyReset");if(empty)empty.onclick=q("#reset").onclick;
+  updateDashboardStats();
+  updateMap(rows);
+}
+function toggleSave(id){
+  if(state.saved.has(id))state.saved.delete(id);else state.saved.add(id);
+  localStorage.setItem("ff-saved",JSON.stringify([...state.saved]));
+  q("#savedCount").textContent=state.saved.size;
+  render();
+}
+
+let map;
+function updateMap(rows){
+  const source=map?.getSource("homes");
+  if(!source)return;
+  const features=rows.filter(l=>Number.isFinite(Number(l.lat))&&Number.isFinite(Number(l.lng)))
+    .map(l=>({
+      type:"Feature",
+      properties:{
+        id:String(l.id),
+        title:String(l.title||"Property"),
+        source:String(l.source||"flatfinder"),
+        sourceUrl:String(l.sourceUrl||""),
+        priceLabel:money(Number(l.price)||0),
+      },
+      geometry:{type:"Point",coordinates:[Number(l.lng),Number(l.lat)]}
+    }));
+  source.setData({type:"FeatureCollection",features});
+}
+function initMap(){
+  map=new maplibregl.Map({
+    container:"map",
+    style:import.meta.env.VITE_MAP_STYLE_URL||"https://tiles.openfreemap.org/styles/bright",
+    center:[78.9629,22.5937],
+    zoom:4.5,
+    attributionControl:{compact:true}
+  });
+  map.addControl(new maplibregl.NavigationControl({showCompass:false}),"bottom-right");
+  map.on("load",()=>{
+    map.addSource("homes",{type:"geojson",data:{type:"FeatureCollection",features:[]},cluster:true,clusterMaxZoom:13,clusterRadius:52});
+    map.addLayer({id:"home-clusters",type:"circle",source:"homes",filter:["has","point_count"],paint:{
+      "circle-color":"#0f766e",
+      "circle-radius":["step",["get","point_count"],15,25,19,100,25,500,31],
+      "circle-stroke-color":"#ffffff","circle-stroke-width":2,"circle-opacity":0.94
+    }});
+    map.addLayer({id:"home-cluster-count",type:"symbol",source:"homes",filter:["has","point_count"],layout:{
+      "text-field":["get","point_count_abbreviated"],"text-font":["Noto Sans Bold"],"text-size":12
+    },paint:{"text-color":"#ffffff"}});
+    map.addLayer({id:"home-points",type:"circle",source:"homes",filter:["!",["has","point_count"]],paint:{
+      "circle-color":"#0f8b83","circle-radius":6,"circle-stroke-color":"#ffffff","circle-stroke-width":1.5
+    }});
+    map.addLayer({id:"home-labels",type:"symbol",source:"homes",minzoom:10.5,filter:["!",["has","point_count"]],layout:{
+      "text-field":["get","priceLabel"],"text-font":["Noto Sans Bold"],"text-size":10,"text-offset":[0,1.3],"text-optional":true
+    },paint:{"text-color":"#17433f","text-halo-color":"#ffffff","text-halo-width":1.6}});
+    map.on("click","home-clusters",event=>{
+      const feature=event.features?.[0];if(!feature)return;
+      map.getSource("homes").getClusterExpansionZoom(feature.properties.cluster_id,(error,zoom)=>{
+        if(!error)map.easeTo({center:feature.geometry.coordinates,zoom,duration:420});
+      });
+    });
+    map.on("click","home-points",event=>{
+      const props=event.features?.[0]?.properties;if(!props)return;
+      const listing=listings.find(item=>String(item.id)===String(props.id));if(!listing)return;
+      if(["99acres","nobroker","housing"].includes(listing.source)){
+        const url=safePortalUrl(listing.sourceUrl,listing.source);
+        if(url)window.open(url,"_blank","noopener,noreferrer");
+      }else openDetail(listing.id);
+    });
+    for(const id of ["home-clusters","home-points"]){
+      map.on("mouseenter",id,()=>map.getCanvas().style.cursor="pointer");
+      map.on("mouseleave",id,()=>map.getCanvas().style.cursor="");
+    }
+    render();
+  });
+}
+
+function loadPortalListings(){
+  const cities=Object.keys(cityNames);
+  Promise.all(cities.map(async city=>{
+    try{
+      const response=await fetch("/data/"+city+"-portal-listings.json");
+      if(!response.ok)return [];
+      const records=await response.json();
+      if(!Array.isArray(records))return [];
+      return records.map(item=>{
+        const source=item.source;
+        const sourceUrl=safePortalUrl(item.url,source);
+        if(!sourceUrl||!["99acres","nobroker","housing"].includes(source))return null;
+        const price=Number(item.price_inr)||0;
+        if(!price)return null;
+        return {
+          id:"portal-"+source+"-"+String(item.source_id||item.id),
+          source,
+          city:cityNames[city],
+          locality:item.locality||cityNames[city],
+          title:item.title||item.society_name||"Property listing",
+          purpose:item.operation==="rent"?"rent":"sale",
+          type:propertyType(item.property_type),
+          bhk:Number(item.bhk)||null,
+          bath:0,
+          area:Number(item.area_sqft)||0,
+          price,
+          deposit:0,
+          furnishing:"",
+          amenities:[],
+          score:0,
+          lat:item.latitude==null?null:Number(item.latitude),
+          lng:item.longitude==null?null:Number(item.longitude),
+          image:"",
+          tag:portalLabels[source],
+          distance:"",
+          sourceUrl
+        };
+      }).filter(Boolean);
+    }catch{return [];}
+  })).then(groups=>{
+    const imported=groups.flat();
+    listings=[...listings.filter(l=>!["99acres","nobroker","housing"].includes(l.source)),...imported];
+    render();
+  });
+}
 async function getPhoneVerification(){
   if(!authUser)return {verified:false,phone:""};
   const {data,error}=await authClient.from("profiles")
