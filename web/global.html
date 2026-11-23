@@ -5,88 +5,126 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#ffffff">
 <title>Flat Finder — AI Real Estate, Worldwide</title>
-<meta name="description" content="Flat Finder is an AI real-estate research and decision platform for finding, comparing and understanding homes worldwide.">
+<meta name="description" content="Search, compare and understand homes worldwide with AI-powered real-estate research. Free during launch.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/src/global.css">
 </head>
 <body>
+<div class="launch-bar"><span>✦ Flat Finder is free during our launch period.</span><span>No subscription. No paywall. Just research smarter.</span></div>
+
 <header class="global-nav">
-  <a class="brand" href="/global.html"><span class="brand-mark">⌂</span><span><b>Flat Finder</b><small>AI Real Estate</small></span></a>
-  <nav><a class="active" href="#explore">Explore</a><a href="#how">How it works</a><a href="#invest">For investors</a></nav>
-  <div class="nav-actions"><button class="icon-btn" aria-label="Language">🌐 <span>English</span></button><button class="ghost-btn">Sign in</button><button class="avatar">P</button></div>
+  <a class="brand" href="/global.html" aria-label="Flat Finder home"><span class="brand-mark">⌂</span><span><b>Flat Finder</b><small>AI Real Estate</small></span></a>
+  <nav><a class="active" href="#explore">Explore</a><a href="#how">How it works</a><a href="#compare">Compare</a><a href="#invest">Our vision</a></nav>
+  <div class="nav-actions"><button class="pill-btn" id="currencyBtn">USD ▾</button><button class="ghost-btn" id="freeBtn">Free to use</button></div>
 </header>
 
 <main>
 <section class="hero" id="explore">
   <div class="hero-copy">
     <span class="eyebrow">AI-POWERED REAL ESTATE · WORLDWIDE</span>
-    <h1>Find, compare and understand <em>homes anywhere.</em></h1>
-    <p>Tell Flat Finder what you need. Our AI researches permitted sources, compares options, calculates the real cost and explains the best choices.</p>
+    <h1>Find the right home.<br><em>Let AI do the research.</em></h1>
+    <p>Describe what you want in plain English. Flat Finder researches permitted public sources, finds relevant properties, compares trade-offs and explains what to verify.</p>
   </div>
+
   <div class="ai-search">
     <div class="ai-icon">✦</div>
-    <textarea id="globalPrompt" rows="2" placeholder="Describe what you're looking for… e.g. 2BR in Dubai under $400k, near metro, good for investment"></textarea>
+    <textarea id="globalPrompt" rows="2" aria-label="Describe your property search" placeholder="Try: 2BR in Dubai under $400k, near metro, good for investment"></textarea>
     <button id="globalSearch">Search with AI <span>→</span></button>
   </div>
-  <div class="search-pills"><button data-filter="location">🌎 Anywhere</button><button data-filter="purpose">⌂ Buy or rent</button><button data-filter="budget">♢ Budget</button><button data-filter="type">☷ Property type</button><button data-filter="more">⚙ More filters</button></div><div class="quick-search-panel" id="quickPanel" hidden><div><label>Location</label><input id="filterLocation" placeholder="City, country"></div><div><label>Purpose</label><select id="filterPurpose"><option>Buy</option><option>Rent</option><option>Investment</option></select></div><div><label>Budget</label><input id="filterBudget" placeholder="$400k"></div><button id="applyFilters">Apply</button></div>
-  <div class="hero-trust"><span>✓ Source-linked research</span><span>✓ Transparent calculations</span><span>✓ No invented property facts</span></div>
+
+  <div class="search-pills">
+    <button data-filter="location">🌎 <span>Anywhere</span></button>
+    <button data-filter="purpose">⌂ <span>Buy or rent</span></button>
+    <button data-filter="budget">♢ <span>Budget</span></button>
+    <button data-filter="type">☷ <span>Property type</span></button>
+    <button data-filter="more">⚙ <span>More filters</span></button>
+  </div>
+
+  <div class="quick-search-panel" id="quickPanel" hidden>
+    <div><label>Location</label><input id="filterLocation" placeholder="City, country"></div>
+    <div><label>Purpose</label><select id="filterPurpose"><option>Buy</option><option>Rent</option><option>Investment</option></select></div>
+    <div><label>Budget</label><input id="filterBudget" placeholder="$400k"></div>
+    <div><label>Bedrooms</label><select id="filterBeds"><option>Any</option><option>1+</option><option>2+</option><option>3+</option><option>4+</option></select></div>
+    <button id="applyFilters">Apply filters</button>
+  </div>
+
+  <div class="hero-trust"><span>✓ Source-linked research</span><span>✓ Transparent calculations</span><span>✓ No invented property facts</span><span>✓ Free during launch</span></div>
 </section>
 
 <section class="category-strip">
-  <button class="selected">⌂ All homes</button><button>▦ Apartments</button><button>⌂ Houses</button><button>♢ Villas</button><button>◫ New projects</button><button>⌁ Investment</button><button>◉ City stays</button><button>＋ More</button>
+  <button class="selected" data-category="all">⌂ All homes</button><button data-category="apartment">▦ Apartments</button><button data-category="house">⌂ Houses</button><button data-category="villa">♢ Villas</button><button data-category="project">◫ New projects</button><button data-category="investment">⌁ Investment</button><button data-category="rent">◉ Rentals</button>
 </section>
 
-<section class="section ai-picks">
-  <div class="section-head"><div><span class="eyebrow">THE NEW PROPERTY SEARCH</span><h2>One search. The whole decision.</h2><p>Flat Finder is designed to sit above fragmented property information and turn it into an actionable answer.</p></div><div class="view-switch"><button class="active">Top matches</button><button>Map</button></div></div>
-  <div class="feature-grid">
-    <article class="feature-card research"><div class="feature-icon">✦</div><h3>AI research</h3><p>Researches current public and permitted sources, then separates source-reported facts from estimates and calculations.</p><div class="mini-list"><span>Official sources</span><span>Listings</span><span>Market context</span></div></article>
-    <article class="feature-card compare"><div class="feature-icon">⇄</div><h3>Compare & decide</h3><p>Compare price, location, commute, amenities, source confidence and financial impact in one view.</p><div class="mini-list"><span>AI match score</span><span>Pros & risks</span><span>Best option</span></div></article>
-    <article class="feature-card money"><div class="feature-icon">▣</div><h3>True cost</h3><p>Calculate EMI, upfront costs, monthly ownership, affordability and rent-vs-buy scenarios with visible assumptions.</p><div class="mini-list"><span>EMI</span><span>Affordability</span><span>Ownership cost</span></div></article>
+<section class="section">
+  <div class="section-head">
+    <div><span class="eyebrow">YOUR AI PROPERTY RESEARCHER</span><h2>One search. The whole decision.</h2><p>We are building Flat Finder as an intelligence layer above fragmented property information—not another giant property database.</p></div>
+    <div class="view-switch"><button class="active" data-view="list">Results</button><button data-view="map">Map</button></div>
   </div>
-</section>
 
-<section class="demo-section">
-  <div class="demo-header"><div><span class="eyebrow">EXAMPLE RESULTS</span><h2>What the experience feels like</h2></div><span class="demo-note">Illustrative UI — live research connects through the AI search.</span></div>
-  <div class="results-layout">
-    <div class="property-list">
-      <article class="property-card">
-        <div class="property-photo dubai"><span>AI Recommended</span><button>♡</button></div>
-        <div class="property-body"><div class="source-line"><span>Official + listing research</span><b>94/100</b></div><h3>Modern 2BR · Dubai Marina</h3><p>Dubai, United Arab Emirates</p><div class="facts"><b>$385,000</b><span>2 BR</span><span>1,180 sq ft</span></div><div class="reason-row"><i>✓ Budget</i><i>✓ Metro access</i><i>✓ Investment fit</i></div></div>
-      </article>
-      <article class="property-card">
-        <div class="property-photo london"><span>Strong Match</span><button>♡</button></div>
-        <div class="property-body"><div class="source-line"><span>Source-linked research</span><b>91/100</b></div><h3>Contemporary 2BR · Canary Wharf</h3><p>London, United Kingdom</p><div class="facts"><b>£620,000</b><span>2 BR</span><span>980 sq ft</span></div><div class="reason-row"><i>✓ Commute</i><i>✓ Transit</i><i>✓ Area fit</i></div></div>
-      </article>
-      <article class="property-card">
-        <div class="property-photo miami"><span>Value Pick</span><button>♡</button></div>
-        <div class="property-body"><div class="source-line"><span>Listing + location research</span><b>88/100</b></div><h3>Beachside 2BR · Miami</h3><p>Florida, United States</p><div class="facts"><b>$410,000</b><span>2 BR</span><span>1,120 sq ft</span></div><div class="reason-row"><i>✓ Amenities</i><i>✓ Lifestyle</i><i>⚠ Verify HOA</i></div></div>
-      </article>
+  <div id="resultsState" class="results-state">
+    <div class="empty-visual">✦</div>
+    <h3>Tell us what you are looking for</h3>
+    <p>Search naturally. For example: <b>“3BR house in Austin under $700k near good schools.”</b></p>
+    <div class="example-row"><button data-example="2BR apartment in Dubai under $400k near metro">Dubai · $400k</button><button data-example="2 bedroom flat in London under £650k near Canary Wharf">London · £650k</button><button data-example="3BR home in Austin under $700k">Austin · $700k</button></div>
+  </div>
+
+  <div id="resultsShell" class="results-shell" hidden>
+    <div class="results-toolbar"><div><b id="resultCount">0</b> researched matches <span id="researchMeta"></span></div><div class="sort-wrap"><label>Sort</label><select id="sortResults"><option value="match">AI match</option><option value="price">Price</option><option value="confidence">Confidence</option></select></div></div>
+    <div class="results-layout">
+      <div id="propertyList" class="property-list"></div>
+      <aside id="analysisCard" class="analysis-card"></aside>
     </div>
-    <aside class="analysis-card">
-      <div class="analysis-map"><span class="map-pin pin-1">Dubai<br><b>$385k</b></span><span class="map-pin pin-2">London<br><b>£620k</b></span><span class="map-pin pin-3">Miami<br><b>$410k</b></span><div class="map-grid"></div></div>
-      <div class="analysis-body"><div class="analysis-top"><span>✦ AI Summary</span><span>3 candidates</span></div><h3>Best overall match</h3><p>Dubai Marina is the strongest fit for the example requirement because it balances budget, transit access and investment criteria.</p><ul><li>Price is within requested range</li><li>Transit access is a strong match</li><li>Investment assumptions are clearly separated</li></ul><button class="dark-btn">View detailed analysis →</button></div>
-    </aside>
   </div>
+</section>
+
+<section class="section feature-section">
+  <div class="feature-grid">
+    <article class="feature-card research"><div class="feature-icon">✦</div><h3>AI research</h3><p>Current public and permitted sources are researched before recommendations are made.</p><div class="mini-list"><span>Official sources</span><span>Listings</span><span>Market context</span></div></article>
+    <article class="feature-card compare"><div class="feature-icon">⇄</div><h3>Compare & decide</h3><p>See price, location, fit, risks, source confidence and trade-offs together.</p><div class="mini-list"><span>Match score</span><span>Pros & risks</span><span>Best option</span></div></article>
+    <article class="feature-card money"><div class="feature-icon">▣</div><h3>True cost</h3><p>We will calculate financing, upfront costs, monthly ownership and rent-vs-buy with visible assumptions.</p><div class="mini-list"><span>EMI</span><span>Affordability</span><span>Ownership cost</span></div></article>
+  </div>
+</section>
+
+<section class="compare-section" id="compare">
+  <div class="section-head centered"><span class="eyebrow">COMPARE BEFORE YOU DECIDE</span><h2>Save the shortlist that actually matters.</h2><p>Select properties from your research results and Flat Finder will turn the shortlist into a decision table.</p></div>
+  <div id="compareEmpty" class="compare-empty"><span>⇄</span><b>Your comparison tray is empty</b><small>Choose “Compare” on researched properties.</small></div>
+  <div id="compareTable" class="compare-table" hidden></div>
 </section>
 
 <section class="workflow" id="how">
   <div class="section-head centered"><span class="eyebrow">HOW FLAT FINDER WORKS</span><h2>From one sentence to one confident decision.</h2></div>
-  <div class="steps"><div><span>01</span><h3>Describe</h3><p>Tell us budget, location, lifestyle, commute, bedrooms and what matters most.</p></div><div><span>02</span><h3>Research</h3><p>AI searches permitted sources and extracts structured facts with source links.</p></div><div><span>03</span><h3>Calculate</h3><p>Costs, financing, commute and other requested metrics are calculated with explicit assumptions.</p></div><div><span>04</span><h3>Decide</h3><p>Flat Finder ranks the options and explains the recommendation, trade-offs and risks.</p></div></div>
+  <div class="steps"><div><span>01</span><h3>Describe</h3><p>Budget, location, lifestyle, commute, bedrooms and what matters most.</p></div><div><span>02</span><h3>Research</h3><p>AI searches permitted sources and keeps source links with the findings.</p></div><div><span>03</span><h3>Calculate</h3><p>Requested financial and location metrics are calculated with explicit assumptions.</p></div><div><span>04</span><h3>Decide</h3><p>Options are ranked and the recommendation explains trade-offs and risks.</p></div></div>
 </section>
 
 <section class="investor" id="invest">
-  <div><span class="eyebrow">INVESTOR VISION</span><h2>The AI decision layer for global real estate.</h2><p>Property information is fragmented across portals, developers, government sources, maps and financial tools. Flat Finder connects those sources into one personalized decision experience.</p></div>
+  <div><span class="eyebrow">OUR VISION</span><h2>The AI decision layer for global real estate.</h2><p>Property information lives across portals, developers, government sources, maps and financial tools. Flat Finder connects those sources into one personalized decision experience.</p><div class="vision-points"><span>Global by design</span><span>Source-first</span><span>Calculation-first</span><span>Free at launch</span></div></div>
   <div class="investor-metrics"><div><b>1</b><span>AI-first interface</span></div><div><b>∞</b><span>Markets can be added</span></div><div><b>0</b><span>Need for a giant owned database</span></div></div>
 </section>
 
-<section class="final-cta"><span class="eyebrow">START WITH YOUR NEXT MOVE</span><h2>What are you looking for?</h2><div class="cta-search"><input id="ctaPrompt" placeholder="e.g. 3BR house in Austin under $700k near good schools"><button id="ctaSearch">Search with AI →</button></div></section>
+<section class="final-cta">
+  <span class="eyebrow">START FOR FREE</span>
+  <h2>What are you looking for?</h2>
+  <p>No account required for the launch experience.</p>
+  <div class="cta-search"><input id="ctaPrompt" placeholder="e.g. 3BR house in Austin under $700k near good schools"><button id="ctaSearch">Research for free →</button></div>
+</section>
 </main>
 
-<footer><div><span class="brand"><span class="brand-mark">⌂</span><span><b>Flat Finder</b><small>AI Real Estate</small></span></span><p>Research. Compare. Decide.</p></div><div class="footer-links"><a href="#explore">Explore</a><a href="#how">How it works</a><a href="#invest">Investors</a></div><small>© 2026 Flat Finder · Built for global real-estate discovery</small></footer>
+<footer><div><span class="brand"><span class="brand-mark">⌂</span><span><b>Flat Finder</b><small>AI Real Estate</small></span></span><p>Research. Compare. Decide.</p></div><div class="footer-links"><a href="#explore">Explore</a><a href="#how">How it works</a><a href="#compare">Compare</a><a href="#invest">Vision</a></div><small>© 2026 Flat Finder · Free during launch · Sources and availability can change</small></footer>
 
-<div class="research-modal" id="researchModal" hidden><div class="research-dialog"><button class="close" id="closeResearch">×</button><span class="eyebrow">FLAT FINDER AI</span><h2 id="researchTitle">Researching your request…</h2><div class="progress"><span id="progressBar"></span></div><div id="researchOutput" class="research-output"><div class="loader">● ● ●</div><p>Understanding your requirements and preparing web research.</p></div></div></div>
+<div class="research-modal" id="researchModal" hidden>
+  <div class="research-dialog">
+    <button class="close" id="closeResearch" aria-label="Close">×</button>
+    <span class="eyebrow">FLAT FINDER AI · LIVE RESEARCH</span>
+    <h2 id="researchTitle">Researching your request…</h2>
+    <div class="progress"><span id="progressBar"></span></div>
+    <div id="researchOutput" class="research-output"><div class="loader">● ● ●</div><p>Understanding your requirements and preparing permitted web research.</p></div>
+  </div>
+</div>
+
+<div class="property-modal" id="propertyModal" hidden><div class="property-dialog"><button class="close" id="closeProperty">×</button><div id="propertyDetail"></div></div></div>
+
 <script src="/src/global.js"></script>
 </body>
 </html>
