@@ -751,3 +751,10 @@ loadApprovedListings();
 loadPortalListings();
 loadResearchCityCount();
 loadPuneSearchPlaces();
+
+window.FlatFinderAI = window.FlatFinderAI || {};
+window.FlatFinderAI.getListings = () => listings;
+window.FlatFinderAI.openProperty = (id) => {
+  if (typeof openDetail === "function") openDetail(id);
+};
+window.FlatFinderAI.init?.();

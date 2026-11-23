@@ -5,7 +5,7 @@
 <meta name="description" content="Search rental and sale homes across India by city, locality, budget, BHK and amenities.">
 <script>if(window.top===window)window.location.replace("/");</script>
 <link rel="canonical" href="https://flat-finder-57f.pages.dev/marketplace.html">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n<link rel="stylesheet" href="/src/ai-property.css">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
 </head><body><div class="app">
 <header class="topbar"><a class="brand" href="/" aria-label="Flat Finder home"><span class="logo">⌂</span><span><b>Flat Finder</b><small>Find home. Live better.</small></span></a>
@@ -97,5 +97,13 @@
  <button type="button" data-mobile-tab="profile"><span>♙</span><small>Profile</small></button>
 </nav>
 <footer><span>© Flat Finder</span><span>Built for India • <a href="/">Map & society research</a></span></footer></div>
-<div id="modal" class="modal" hidden><div class="modal-card"><button class="close" id="closeModal">×</button><div id="modalBody"></div></div></div>
-<script>if(new URLSearchParams(location.search).get("embed")==="1")document.body.classList.add("embedded");</script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script type="module" src="/src/marketplace.js"></script></body></html>
+<div class="ai-search-layer" id="ai-search-layer" hidden>
+  <section class="ai-chat" role="dialog" aria-modal="true" aria-labelledby="ai-chat-title">
+    <header class="ai-chat-head"><div><h3 id="ai-chat-title">Flat Finder AI</h3><p>Property search, matching and decision support</p></div><button class="ai-chat-close" id="ai-search-close" type="button" aria-label="Close">×</button></header>
+    <div class="ai-chat-body">
+      <form class="ai-chat-form" id="ai-chat-form"><textarea id="ai-chat-input" aria-label="Describe your property requirement" placeholder="Tell me everything that matters… e.g. I earn ₹1.2L/month, have ₹20L savings, want a 2BHK in Pune under ₹75L and need to reach Hinjewadi within 45 minutes." required></textarea><button id="ai-chat-submit" type="submit">Find my homes</button></form>
+      <div class="ai-chat-results" id="ai-chat-results"></div>
+    </div>
+  </section>
+</div>\n<div id="modal" class="modal" hidden><div class="modal-card"><button class="close" id="closeModal">×</button><div id="modalBody"></div></div></div>
+<script>if(new URLSearchParams(location.search).get("embed")==="1")document.body.classList.add("embedded");</script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script type="module" src="/src/marketplace.js"></script>\n<script type="module" src="/src/ai-property.js"></script></body></html>
