@@ -101,3 +101,7 @@ window.FlatFinderAI=window.FlatFinderAI||{};
 window.FlatFinderAI.init=AI.init;
 window.FlatFinderAI.parseRequirements=AI.parseRequirements;
 window.FlatFinderAI.emi=AI.emi;
+
+
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => AI.init(), {once:true});
+else AI.init();
