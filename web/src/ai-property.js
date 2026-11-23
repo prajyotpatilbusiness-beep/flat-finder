@@ -70,16 +70,16 @@ const AI = (() => {
   async function run(message){
     const listings=window.FlatFinderAI?.getListings?.()||[];
     const requirements=parseRequirements(message), results=rank(listings,requirements);
-    const modelAnswer=await askModel(message,requirements,results);
-    const answer=modelAnswer||(results.length?"I found "+results.length+" strong matches from the property records currently connected to Flat Finder. I ranked them against your budget, BHK, location and other requirements.":"I couldn't find a connected listing that matches these requirements yet. Try a wider budget, radius, city or BHK range.");
-    return {answer,requirements,results};
+    const modelData=await askModel(message,requirements,results);
+    const answer=(modelData&&modelData.answer)||(results.length?"I found "+results.length+" fallback matches from the property records currently connected to Flat Finder. Web research is unavailable right now.":"I couldn't complete web research right now. Try again in a moment or broaden your requirements.");
+    return {answer,requirements,results,sources:(modelData&&modelData.sources)||[],researchUsed:Boolean(modelData&&modelData.researchUsed)};
   }
 
   function open(){const layer=q("#ai-search-layer");if(layer){layer.hidden=false;q("#ai-chat-input")?.focus();}}
   function close(){const layer=q("#ai-search-layer");if(layer)layer.hidden=true;}
   function renderResponse(data){
     const box=q("#ai-chat-results");if(!box)return;
-    box.innerHTML='<div class="ai-answer"><p>'+escapeHtml(data.answer)+'</p></div><div class="ai-requirements">'+data.requirements.map(x=>'<span>'+escapeHtml(x)+'</span>').join("")+'</div>'+(data.results.length?'<div class="ai-results-head"><b>Best matches</b><span>'+data.results.length+' properties</span></div><div class="ai-results-grid">'+data.results.map(card).join("")+'</div>':"");
+    box.innerHTML='<div class="ai-research-status">'+(data.researchUsed?"LIVE WEB RESEARCH":"LOCAL FALLBACK")+'</div><div class="ai-answer"><p>'+escapeHtml(data.answer)+'</p></div><div class="ai-requirements">'+Object.entries(data.requirements).filter(([k,v])=>v&&(!Array.isArray(v)||v.length)).map(([k,v])=>'<span>'+escapeHtml(k.replace(/([A-Z])/g," $1"))+': '+escapeHtml(Array.isArray(v)?v.join(", "):v)+'</span>').join("")+'</div>'+(data.sources?.length?'<div class="ai-sources"><div class="ai-results-head"><b>Research sources</b><span>'+data.sources.length+' sources</span></div>'+data.sources.map(s=>'<a href="'+escapeHtml(s.url)+'" target="_blank" rel="noopener noreferrer">'+escapeHtml(s.title||s.url)+' ↗</a>').join("")+'</div>':"")+(data.results.length?'<div class="ai-results-head"><b>Local fallback matches</b><span>'+data.results.length+' properties</span></div><div class="ai-results-grid">'+data.results.map(card).join("")+'</div>':"");
     box.querySelectorAll("[data-ai-property]").forEach(btn=>btn.onclick=()=>window.FlatFinderAI?.openProperty?.(btn.dataset.aiProperty));
   }
 
