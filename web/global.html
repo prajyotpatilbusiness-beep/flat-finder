@@ -30,7 +30,7 @@
     <textarea id="globalPrompt" rows="2" placeholder="Describe what you're looking for… e.g. 2BR in Dubai under $400k, near metro, good for investment"></textarea>
     <button id="globalSearch">Search with AI <span>→</span></button>
   </div>
-  <div class="search-pills"><button>🌎 Anywhere</button><button>⌂ Buy or rent</button><button>♢ Budget</button><button>☷ Property type</button><button>⚙ More filters</button></div>
+  <div class="search-pills"><button data-filter="location">🌎 Anywhere</button><button data-filter="purpose">⌂ Buy or rent</button><button data-filter="budget">♢ Budget</button><button data-filter="type">☷ Property type</button><button data-filter="more">⚙ More filters</button></div><div class="quick-search-panel" id="quickPanel" hidden><div><label>Location</label><input id="filterLocation" placeholder="City, country"></div><div><label>Purpose</label><select id="filterPurpose"><option>Buy</option><option>Rent</option><option>Investment</option></select></div><div><label>Budget</label><input id="filterBudget" placeholder="$400k"></div><button id="applyFilters">Apply</button></div>
   <div class="hero-trust"><span>✓ Source-linked research</span><span>✓ Transparent calculations</span><span>✓ No invented property facts</span></div>
 </section>
 
